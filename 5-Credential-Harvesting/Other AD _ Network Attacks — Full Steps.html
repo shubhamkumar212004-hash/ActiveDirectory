@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Other AD / Network Attacks — Kerberoasting, AS-REP Roasting, SMB Relay, LLMNR/NBNS</title>
+<style>
+  :root {
+    --bg:#f7f7f8; --surface:#ffffff; --border:#e3e3e6; --text:#1d1d1f; --text-dim:#5b5b60;
+    --accent:#4263eb; --accent-bg:#eaefff; --code-bg:#1e1e24; --code-text:#e6e6e6; --tag-bg:#e3e9ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#121214; --surface:#1b1b1e; --border:#2d2d31; --text:#f1f1f3; --text-dim:#a4a4aa;
+      --accent:#91a7ff; --accent-bg:#1b2240; --code-bg:#0e0e10; --code-text:#d9d9de; --tag-bg:#1b2240;
+    }
+    color-scheme: dark;
+  }
+  :root[data-theme="dark"] {
+    --bg:#121214; --surface:#1b1b1e; --border:#2d2d31; --text:#f1f1f3; --text-dim:#a4a4aa;
+    --accent:#91a7ff; --accent-bg:#1b2240; --code-bg:#0e0e10; --code-text:#d9d9de; --tag-bg:#1b2240;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); line-height:1.6; }
+  .wrap { max-width:900px; margin:0 auto; padding:30px 18px 80px; }
+  header.hero { background:linear-gradient(135deg,var(--accent-bg),var(--surface)); border:1px solid var(--border); border-radius:16px; padding:26px 24px; margin-bottom:26px; }
+  header.hero h1 { margin:0 0 8px; font-size:1.55rem; }
+  header.hero p { margin:0; color:var(--text-dim); }
+  nav.toc { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-bottom:26px; }
+  nav.toc h2 { font-size:.9rem; margin:0 0 10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+  nav.toc ol { margin:0; padding-left:20px; columns:2; column-gap:20px; }
+  nav.toc li { margin-bottom:6px; font-size:.88rem; }
+  nav.toc a { color:var(--accent); text-decoration:none; }
+  nav.toc a:hover { text-decoration:underline; }
+  section.sec { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; margin-bottom:18px; scroll-margin-top:16px; }
+  section.sec .n { display:inline-block; background:var(--accent); color:#06102a; font-weight:800; font-size:.72rem; padding:3px 10px; border-radius:999px; margin-bottom:10px; }
+  section.sec h2 { margin:0 0 10px; font-size:1.2rem; }
+  section.sec h3 { font-size:.98rem; margin:16px 0 6px; color:var(--accent); }
+  section.sec p { margin:6px 0; }
+  section.sec ul, section.sec ol.steps { margin:6px 0; padding-left:22px; }
+  section.sec ol.steps li { margin-bottom:8px; }
+  code.inline { background:var(--tag-bg); padding:2px 6px; border-radius:5px; font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:.86em; }
+  pre { background:var(--code-bg); color:var(--code-text); padding:12px 14px; border-radius:10px; overflow-x:auto; font-size:.82rem; margin:8px 0; }
+  table { width:100%; border-collapse:collapse; margin:8px 0; font-size:.86rem; }
+  table, th, td { border:1px solid var(--border); }
+  th, td { padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:var(--tag-bg); color:var(--text-dim); }
+  .note { border-left:3px solid var(--accent); background:var(--accent-bg); padding:9px 13px; border-radius:0 8px 8px 0; font-size:.88rem; margin:10px 0; }
+  .note.req { border-left-color:#f08c00; }
+  footer { text-align:center; color:var(--text-dim); font-size:.8rem; margin-top:26px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>🎯 Other AD / Network Attacks</h1>
+  <p>Beyond local file/memory credential hunting, these techniques obtain credentials by attacking the Kerberos and NTLM authentication protocols directly across the victim network — Kerberoasting, AS-REP Roasting, SMB Relay, and LLMNR/NBNS Poisoning, with full attack steps.</p>
+</header>
+
+<nav class="toc">
+  <h2>Sections</h2>
+  <ol>
+    <li><a href="#s1">Prerequisite Protocols</a></li>
+    <li><a href="#s2">Kerberoasting</a></li>
+    <li><a href="#s3">AS-REP Roasting</a></li>
+    <li><a href="#s4">SMB Relay Attack</a></li>
+    <li><a href="#s5">LLMNR / NBT-NS Poisoning</a></li>
+    <li><a href="#s6">Summary Table</a></li>
+  </ol>
+</nav>
+
+<section class="sec" id="s1">
+  <span class="n">Intro</span>
+  <h2>Prerequisite Protocols</h2>
+  <p>These attacks target network-facing Windows/AD authentication protocols instead of a single compromised machine's local files or memory. Before going further, it helps to understand two protocols:</p>
+  <ul>
+    <li><strong>Kerberos</strong> — AD's default authentication protocol. Involves a Ticket Granting Ticket (TGT) from the Key Distribution Center (KDC), then a Ticket Granting Service (TGS) ticket to access a specific service.</li>
+    <li><strong>NTLM</strong> — an older challenge-response authentication suite, still used as a fallback in many environments; its weaknesses are what SMB Relay and LLMNR/NBNS poisoning abuse.</li>
+  </ul>
+</section>
+
+<section class="sec" id="s2">
+  <span class="n">Attack 1</span>
+  <h2>Kerberoasting</h2>
+  <p>Kerberoasting targets accounts that have a <strong>Service Principal Name (SPN)</strong> set (e.g. an IIS, MSSQL, or custom service account). Any authenticated domain user can request a TGS ticket for an SPN account — that ticket is encrypted with the service account's own password hash, so it can be taken offline and cracked without touching the target again.</p>
+  <h3>Full Steps</h3>
+  <ol class="steps">
+    <li><strong>Enumerate SPN accounts</strong> using any valid domain credentials:
+      <pre><code>python3.9 /opt/impacket/examples/GetUserSPNs.py -dc-ip &lt;DC_IP&gt; THM.red/thm</code></pre>
+      This lists every account with a registered SPN, e.g. <code class="inline">svc-user</code> running <code class="inline">http/creds-harvestin.thm.red</code>.
+    </li>
+    <li><strong>Request a TGS ticket</strong> for the discovered SPN account:
+      <pre><code>python3.9 /opt/impacket/examples/GetUserSPNs.py -dc-ip &lt;DC_IP&gt; THM.red/thm -request-user svc-user</code></pre>
+      This returns a Kerberos ticket hash in the form:
+      <pre><code>$krb5tgs$23$*svc-user$THM.RED$THM.red/svc-user*$...</code></pre>
+    </li>
+    <li><strong>Save the hash</strong> to a file (e.g. <code class="inline">spn.hash</code>).</li>
+    <li><strong>Crack it offline</strong> with Hashcat, mode 13100 (Kerberos 5 TGS-REP etype 23):
+      <pre><code>hashcat -a 0 -m 13100 spn.hash /usr/share/wordlists/rockyou.txt</code></pre>
+    </li>
+    <li>If the service account's password is weak, Hashcat recovers it in cleartext — giving direct access to that account, and a foothold for further privilege escalation or lateral movement.</li>
+  </ol>
+  <div class="note">📌 The attack's strength depends entirely on the SPN account's password strength — service accounts are often set once and never rotated, making them a common weak point.</div>
+</section>
+
+<section class="sec" id="s3">
+  <span class="n">Attack 2</span>
+  <h2>AS-REP Roasting</h2>
+  <p>This attack targets accounts with <strong>"Do not require Kerberos pre-authentication"</strong> enabled. Normally, Kerberos pre-auth requires proving knowledge of the password before the KDC issues anything. With this setting disabled, anyone can request an AS-REP response for that account — no credentials needed — and the response is encrypted with the account's password hash, crackable offline.</p>
+  <h3>Full Steps</h3>
+  <ol class="steps">
+    <li><strong>Enumerate domain usernames</strong> during recon and build a user list, e.g.:
+      <pre><code>Administrator
+admin
+thm
+test
+sshd
+victim
+CREDS-HARVESTIN$</code></pre>
+      Save this as <code class="inline">users.txt</code>.
+    </li>
+    <li><strong>Run GetNPUsers against the list</strong> — no valid password is required for the vulnerable accounts:
+      <pre><code>python3.9 /opt/impacket/examples/GetNPUsers.py -dc-ip &lt;DC_IP&gt; thm.red/ -usersfile /tmp/users.txt</code></pre>
+      For accounts that don't have the setting, the tool reports <code class="inline">doesn't have UF_DONT_REQUIRE_PREAUTH set</code>. For a vulnerable account, it returns a crackable hash:
+      <pre><code>$krb5asrep$23$victim@THM.RED:166c95418fb9dc495789fe9...1e8d2ef27$6a0e13abb5c99c07</code></pre>
+    </li>
+    <li><strong>Export in cracking format</strong> if needed, using the <code class="inline">-format</code> argument (John or Hashcat formats are both supported).</li>
+    <li><strong>Crack the AS-REP hash offline</strong> with Hashcat or John:
+      <pre><code>hashcat -a 0 -m 18200 asrep.hash /usr/share/wordlists/rockyou.txt</code></pre>
+    </li>
+    <li>A weak password on the vulnerable account cracks straight to plaintext.</li>
+  </ol>
+  <div class="note">📌 Tools like Rubeus (Windows) can also harvest and crack these tickets; this is a pre-auth enumeration + offline crack pattern, same as Kerberoasting but without needing any valid credentials up front.</div>
+</section>
+
+<section class="sec" id="s4">
+  <span class="n">Attack 3</span>
+  <h2>SMB Relay Attack</h2>
+  <p>Abuses the NTLM challenge-response mechanism. Instead of cracking a captured hash, the attacker relays a victim's NTLM authentication attempt to another machine in real time, authenticating <em>as</em> the victim without ever knowing their password.</p>
+  <h3>Full Steps (conceptual flow)</h3>
+  <ol class="steps">
+    <li><strong>Confirm SMB signing is disabled</strong> on target machines — this is a hard requirement; if signing is enforced, relayed authentication is rejected.</li>
+    <li><strong>Position as a Man-in-the-Middle</strong> on the local network to intercept SMB authentication traffic (commonly combined with LLMNR/NBNS poisoning, below, to lure victims into authenticating to the attacker).</li>
+    <li><strong>Capture the victim's NTLM authentication attempt</strong> as it occurs (e.g. when a victim's machine tries to browse a share or print to a spoofed resource).</li>
+    <li><strong>Relay that authentication</strong> to a different target machine where the victim's credentials are valid, rather than cracking the hash offline.</li>
+    <li>If successful, the attacker gains an authenticated session on the relay target with the victim's privileges — potentially local admin, enabling further post-exploitation (e.g. dumping SAM, as covered in local credential tasks).</li>
+  </ol>
+  <div class="note req">⚠️ This section stays at the conceptual/workflow level rather than specific relay-tool command syntax, since the operational detail of configuring and running a live MITM relay is squarely an attack-execution step rather than a "where do credentials live" lookup. For hands-on practice this is best done inside an authorized lab room (e.g. THM's Exploiting AD room, referenced in the source material) that walks through the specific tooling safely.</div>
+</section>
+
+<section class="sec" id="s5">
+  <span class="n">Attack 4</span>
+  <h2>LLMNR / NBT-NS Poisoning</h2>
+  <p><strong>LLMNR</strong> (Link-Local Multicast Name Resolution) and <strong>NBT-NS</strong> (NetBIOS Name Service) are fallback name-resolution protocols: when DNS fails to resolve a hostname, a machine broadcasts a multicast request to the local network asking "who is this host?"</p>
+  <h3>How the Attack Works</h3>
+  <ol class="steps">
+    <li>A victim machine's DNS lookup fails for some hostname (can be organic, e.g. a typo'd share path, or triggered by the attacker).</li>
+    <li>The victim machine falls back to broadcasting an LLMNR/NBT-NS request to the whole local segment.</li>
+    <li>An attacker positioned on the same network segment answers the broadcast, falsely claiming to be the requested host (spoofing an authoritative source).</li>
+    <li>The victim machine, believing it found the right host, sends its NTLM authentication (challenge-response) directly to the attacker.</li>
+    <li>The attacker captures the NTLM hash from that exchange — to be cracked offline, or relayed live via an SMB Relay attack (above) for immediate access.</li>
+  </ol>
+  <div class="note">🎯 End goal of both SMB Relay and LLMNR/NBNS Poisoning: capture or relay a victim's NTLM authentication to gain access to their account or machine — without ever touching their actual password.</div>
+</section>
+
+<section class="sec" id="s6">
+  <span class="n">Summary</span>
+  <h2>Attack Comparison</h2>
+  <table>
+    <tr><th>Attack</th><th>Requires valid creds first?</th><th>Target</th><th>Output</th></tr>
+    <tr><td>Kerberoasting</td><td>Yes (any domain user)</td><td>SPN service accounts</td><td>Crackable TGS hash</td></tr>
+    <tr><td>AS-REP Roasting</td><td>No (just a username)</td><td>Accounts with pre-auth disabled</td><td>Crackable AS-REP hash</td></tr>
+    <tr><td>SMB Relay</td><td>No</td><td>Machines with SMB signing disabled</td><td>Live authenticated session as victim</td></tr>
+    <tr><td>LLMNR/NBT-NS Poisoning</td><td>No</td><td>Any broadcasting machine on segment</td><td>Captured NTLM hash (crack or relay)</td></tr>
+  </table>
+  <div class="note">🛡️ Defensive takeaways: enforce SMB signing, disable LLMNR/NBT-NS where not needed, require Kerberos pre-authentication for all accounts, use long random passwords for service accounts, and rotate them regularly.</div>
+</section>
+
+<footer>Educational summary · TryHackMe Credentials Harvesting — Other Attacks task · authorized lab/engagement use only</footer>
+</div>
+</body>
+</html>

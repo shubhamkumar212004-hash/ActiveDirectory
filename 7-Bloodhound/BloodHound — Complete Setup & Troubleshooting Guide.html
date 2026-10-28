@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BloodHound — Complete Setup &amp; Troubleshooting Guide</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg-raised:#131a22; --bg-card:#1a2330;
+    --line:#22303c; --text:#d6e2ea; --text-dim:#7e94a3;
+    --accent:#8e7cff; --accent-dim:#2a224a; --warn:#e6b65e; --red:#e66a5e; --green:#6adf8c;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  *{ box-sizing:inherit; margin:0; padding:0; }
+  @media(prefers-color-scheme:light){
+    :root:not([data-theme="dark"]){
+      --bg:#f6f5fb; --bg-raised:#ffffff; --bg-card:#ece9f9;
+      --line:#dad6ef; --text:#1e1b2e; --text-dim:#5c5775;
+      --accent:#5b3df0; --accent-dim:#e4ddff; --warn:#8a5e0a; --red:#c0392b; --green:#17803d;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1117; --bg-raised:#131a22; --bg-card:#1a2330;
+    --line:#22303c; --text:#d6e2ea; --text-dim:#7e94a3;
+    --accent:#8e7cff; --accent-dim:#2a224a; --warn:#e6b65e; --red:#e66a5e; --green:#6adf8c;
+  }
+  body{ background:var(--bg); color:var(--text); font-family:"SF Mono",ui-monospace,"Cascadia Code",Consolas,monospace; line-height:1.6; }
+
+  .wrap{ max-width:980px; margin:0 auto; padding:52px 24px 100px; }
+
+  header{ margin-bottom:36px; }
+  .badge{ display:inline-block; background:var(--accent-dim); color:var(--accent); font-size:11px; padding:3px 9px; border-radius:3px; margin-bottom:12px; }
+  h1{ font-size:clamp(26px,4.5vw,38px); font-weight:700; letter-spacing:-0.01em; margin-bottom:10px; }
+  .sub{ color:var(--text-dim); font-size:14px; max-width:72ch; line-height:1.7; }
+
+  .env{
+    margin:22px 0 16px;
+    background:var(--bg-raised); border:1px solid var(--line);
+    border-radius:8px; padding:16px 20px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px 24px; font-size:12.5px;
+  }
+  .env .row{ display:flex; flex-direction:column; gap:3px; }
+  .env .k{ color:var(--text-dim); font-size:11px; }
+  .env .v{ color:var(--accent); font-weight:600; }
+
+  nav.toc{
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding-bottom:28px; margin-bottom:44px;
+    border-bottom:1px solid var(--line);
+  }
+  nav.toc a{
+    color:var(--text-dim); text-decoration:none; font-size:12px;
+    border:1px solid var(--line); padding:5px 12px; border-radius:4px;
+    transition:all .15s;
+  }
+  nav.toc a:hover{ color:var(--accent); border-color:var(--accent); }
+
+  section{ margin-bottom:60px; scroll-margin-top:24px; }
+  .sec-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .sec-num{ color:var(--accent); font-size:13px; }
+  h2{ font-size:20px; font-weight:600; }
+  .sec-desc{ color:var(--text-dim); font-size:13.5px; max-width:74ch; margin:6px 0 24px; }
+
+  .sub-sec{ margin-bottom:32px; }
+  h3{ font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; border-left:2px solid var(--accent); padding-left:10px; }
+  .how{ color:var(--text-dim); font-size:13px; margin:8px 0 12px; max-width:76ch; line-height:1.7; }
+
+  .code-block{ background:var(--bg-raised); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:12px; }
+  .code-label{ display:flex; align-items:center; justify-content:space-between; padding:8px 14px; border-bottom:1px solid var(--line); font-size:11px; color:var(--text-dim); }
+  .code-label .machine{ color:var(--warn); }
+  pre{ padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.65; }
+  pre .c{ color:var(--accent); }
+  pre .w{ color:var(--warn); }
+  pre .r{ color:var(--red); }
+  pre .g{ color:var(--green); }
+  pre .d{ color:var(--text-dim); }
+
+  .flag-table{ width:100%; border-collapse:collapse; font-size:12.5px; margin:10px 0 18px; background:var(--bg-raised); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .flag-table th{ padding:9px 14px; text-align:left; color:var(--text-dim); font-size:11px; border-bottom:1px solid var(--line); }
+  .flag-table td{ padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .flag-table tr:last-child td{ border-bottom:none; }
+  .flag-table .flag{ color:var(--warn); white-space:nowrap; }
+  .flag-table .fdesc{ color:var(--text-dim); }
+
+  .note{ border-left:2px solid var(--warn); background:var(--bg-raised); padding:10px 14px; font-size:12.5px; color:var(--text-dim); border-radius:0 6px 6px 0; margin:12px 0; }
+  .note b{ color:var(--warn); }
+  .note.good{ border-left-color:var(--green); }
+  .note.good b{ color:var(--green); }
+  .note.bad{ border-left-color:var(--red); }
+  .note.bad b{ color:var(--red); }
+
+  .qref{ width:100%; border-collapse:collapse; font-size:13px; background:var(--bg-raised); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .qref th{ padding:10px 16px; text-align:left; color:var(--text-dim); font-size:11px; border-bottom:1px solid var(--line); }
+  .qref td{ padding:10px 16px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .qref tr:last-child td{ border-bottom:none; }
+  .qref .tool{ color:var(--accent); font-weight:600; white-space:nowrap; }
+  .qref .adv{ color:var(--text-dim); font-size:12px; }
+  .qref a{ color:var(--accent); }
+
+  .overflow-x{ overflow-x:auto; width:100%; }
+  .steps{ padding-left:20px; margin:8px 0; }
+  .steps li{ margin-bottom:8px; color:var(--text-dim); font-size:13.5px; }
+
+  footer{ margin-top:60px; padding-top:18px; border-top:1px solid var(--line); color:var(--text-dim); font-size:11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">field reference — authorized lab / engagement use</div>
+    <h1>🐕‍🦺 BloodHound — Complete Setup &amp; Troubleshooting Guide</h1>
+    <p class="sub">
+      BloodHound CE (Community Edition) Active Directory attack-path enumeration ke liye sabse popular tool hai.
+      Yeh guide end-to-end setup (Neo4j + PostgreSQL + BloodHound CE), SharpHound se data collect karna, aur
+      har stage par common errors ka exact fix cover karta hai — including woh real issue jo abhi humne saath
+      me debug kiya (PostgreSQL cluster down hone ka case).
+    </p>
+
+    <div class="env">
+      <div class="row"><span class="k">ATTACKER BOX</span><span class="v">Kali Linux</span></div>
+      <div class="row"><span class="k">NEO4J PORT (Bolt)</span><span class="v">7687</span></div>
+      <div class="row"><span class="k">NEO4J PORT (Web UI)</span><span class="v">7474</span></div>
+      <div class="row"><span class="k">POSTGRESQL PORT</span><span class="v">5432</span></div>
+      <div class="row"><span class="k">BLOODHOUND WEB UI</span><span class="v">localhost:8080</span></div>
+      <div class="row"><span class="k">CONFIG FILE</span><span class="v">/etc/bhapi/bhapi.json</span></div>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#overview">What is BloodHound</a>
+    <a href="#install">Installation</a>
+    <a href="#neo4j">Neo4j Setup</a>
+    <a href="#postgres">PostgreSQL Setup</a>
+    <a href="#start">Starting Everything</a>
+    <a href="#login">First Login</a>
+    <a href="#sharphound">Collecting Data (SharpHound)</a>
+    <a href="#ingest">Ingesting Data</a>
+    <a href="#troubleshoot">Troubleshooting</a>
+    <a href="#cheatsheet">Daily Start/Stop Cheatsheet</a>
+    <a href="#sources">Sources</a>
+  </nav>
+
+  <!-- ══════════════════════════════ OVERVIEW ══════════════════════════════ -->
+  <section id="overview">
+    <div class="sec-head"><span class="sec-num">01</span><h2>What is BloodHound &amp; Why It Needs 2 Databases</h2></div>
+    <p class="sec-desc">
+      BloodHound Active Directory ko ek graph ki tarah model karta hai — users, groups, computers, GPOs, sessions,
+      permissions sab nodes aur edges ban jaate hain. Isse "kaun kis path se Domain Admin tak pahunch sakta hai"
+      jaise complex questions ek click me answer ho jaate hain.
+    </p>
+    <div class="sub-sec">
+      <h3>Architecture — 3 moving parts</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Component</th><th>Kaam</th></tr>
+          <tr><td class="flag">Neo4j</td><td class="fdesc">Graph database — poora AD data (nodes/edges/relationships) yahan store hota hai. Port 7687 (Bolt protocol) aur 7474 (web browser interface).</td></tr>
+          <tr><td class="flag">PostgreSQL</td><td class="fdesc">BloodHound CE ka apna internal app-data database — users, sessions, API keys, job history, config. Port 5432.</td></tr>
+          <tr><td class="flag">BloodHound CE (bhapi)</td><td class="fdesc">Actual web application/API jo dono databases se connect karke UI serve karta hai. Default port 8080.</td></tr>
+        </table>
+      </div>
+      <div class="note"><b>Important:</b> Teeno alag-alag services hain, teeno independently start honi chahiye. BloodHound CE in dono (Neo4j + PostgreSQL) se connect na ho paaye to start hi nahi hoga — yahi humari pichli session ka exact issue tha.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ INSTALL ══════════════════════════════ -->
+  <section id="install">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Installation</h2></div>
+    <p class="sec-desc">Kali par BloodHound CE aana prebuilt hota hai; agar nahi hai ya fresh install chahiye to:</p>
+
+    <div class="sub-sec">
+      <h3>Option A — Kali ka apt package (sabse simple)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo apt update
+sudo apt install bloodhound -y
+sudo apt install neo4j -y
+sudo apt install postgresql -y</pre>
+      </div>
+      <p class="how">Yeh teeno dependencies ek saath install kar deta hai. Kali ke repos me BloodHound CE already hota hai.</p>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Option B — Official Docker Compose (sabse clean, auto-managed)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>curl -L https://ghst.ly/getbhce -o docker-compose.yml
+docker compose up -d</pre>
+      </div>
+      <p class="how">Docker approach me Neo4j aur PostgreSQL dono containers ke andar hi managed hote hain — manual cluster/service start karne ki zaroorat nahi padti. Default admin password terminal output ya <code style="color:var(--accent)">docker compose logs bloodhound</code> me milta hai.</p>
+      <div class="note good"><b>Recommended:</b> Agar baar-baar yeh service-start issues face ho rahe hain, Docker Compose route is sab se bachata hai kyunki Docker khud dependencies manage karta hai.</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Option C — Manual binary download</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre><span class="d"># GitHub releases se latest BloodHound CE binary download karo</span>
+<span class="d"># https://github.com/SpecterOps/BloodHound/releases</span>
+chmod +x bloodhound-linux-amd64
+sudo mv bloodhound-linux-amd64 /usr/bin/bloodhound</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ NEO4J ══════════════════════════════ -->
+  <section id="neo4j">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Neo4j Setup</h2></div>
+    <p class="sec-desc">Neo4j ko pehle start aur configure karna hota hai, BloodHound se pehle.</p>
+
+    <div class="sub-sec">
+      <h3>Pehli baar start karo (console mode — foreground, debugging ke liye achha)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo neo4j console</pre>
+      </div>
+      <p class="how">Yeh foreground me chalta hai — terminal band karoge to Neo4j bhi band ho jayega. Logs seedhe terminal me dikhte hain, isliye pehli setup ke liye best hai.</p>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Background/service mode (normal daily use)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo systemctl start neo4j
+sudo systemctl enable neo4j   <span class="d"># boot par auto-start</span>
+sudo systemctl status neo4j</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Pehli baar password set karo</h3>
+      <p class="how">Neo4j start hote hi <code style="color:var(--accent)">http://localhost:7474</code> par browser me jaake default creds (<code style="color:var(--accent)">neo4j</code>/<code style="color:var(--accent)">neo4j</code>) se login karo — pehli login par naya password set karne ko kahega.</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Browser</span></div>
+        <pre>http://localhost:7474
+Username: neo4j
+Password: neo4j        <span class="d"># first login pe change karna padega</span></pre>
+      </div>
+      <div class="note"><b>Yaad rakho:</b> Yehi naya password <code style="color:var(--accent)">bhapi.json</code> config me bhi daalna padega (next section).</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ POSTGRES ══════════════════════════════ -->
+  <section id="postgres">
+    <div class="sec-head"><span class="sec-num">04</span><h2>PostgreSQL Setup</h2></div>
+    <p class="sec-desc">Yeh wahi part hai jahan humari pichli session me problem aayi thi — isliye detail me.</p>
+
+    <div class="sub-sec">
+      <h3>Installed hai ya nahi check karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>dpkg -l | grep postgresql
+which psql</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Service start karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo systemctl start postgresql
+sudo systemctl enable postgresql</pre>
+      </div>
+      <div class="note bad"><b>⚠ Trap:</b> <code style="color:var(--accent)">postgresql.service</code> ek <b>wrapper/meta service</b> hai jo sirf per-version clusters ko trigger karta hai. Yeh khud "run" hoke turant exit ho jaata hai — status <code style="color:var(--accent)">active (exited)</code> dikhega, jiska matlab actual database chal hi nahi rahi!</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Verify karo — yahi step humari asli diagnosis thi</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>pg_lsclusters</pre>
+      </div>
+      <p class="how">Output format: <code style="color:var(--accent)">Ver Cluster Port Status Owner Data-directory Log-file</code>. Agar <b>Status</b> column me <code style="color:var(--accent)">down</code> dikhe (ya row hi na ho), to yehi root cause hai.</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Healthy output dikhna chahiye aisa</span></div>
+        <pre><span class="d">Ver Cluster Port Status Owner    Data directory              Log file</span>
+<span class="g">18  main    5432 online</span> postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Cluster down ho to directly start karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo pg_ctlcluster 18 main start
+<span class="d"># version number apna actual version se replace karo (pg_lsclusters se pata chalega)</span></pre>
+      </div>
+      <p class="how">Yeh command wrapper service ko bypass karke directly us specific cluster ko start karta hai — jab tak port actually listen nahi karne lagta tab tak process foreground/background me zinda rehta hai.</p>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Agar cluster exist hi nahi karta (bilkul fresh install)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo pg_createcluster 18 main --start</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Confirm karo port par kuch listen kar raha hai</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo ss -tulpn | grep 5432</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Healthy output</span></div>
+        <pre>tcp   LISTEN 0      200             <span class="g">127.0.0.1:5432</span>       0.0.0.0:*    users:(("postgres",pid=<span class="w">89928</span>,fd=7))
+tcp   LISTEN 0      200                 [::1]:5432          [::]:*    users:(("postgres",pid=<span class="w">89928</span>,fd=6))</pre>
+      </div>
+      <div class="note good"><b>Yeh dikhte hi:</b> PostgreSQL ab ready hai, agla step BloodHound DB/user create karna (zaroorat pade to) ya seedha BloodHound start karna hai.</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>BloodHound ka DB aur user manually create karna (agar auto-setup nahi hua)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo -u postgres psql -c "\du"     <span class="d"># existing users dekho</span>
+sudo -u postgres psql -c "\l"      <span class="d"># existing databases dekho</span></pre>
+      </div>
+      <p class="how">Agar <code style="color:var(--accent)">_bloodhound</code> user ya <code style="color:var(--accent)">bloodhound</code> database missing hai, config file se exact credentials uthao:</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>cat /etc/bhapi/bhapi.json</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — psql shell</span></div>
+        <pre>sudo -u postgres psql</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">psql prompt ke andar (config ki values use karo)</span></div>
+        <pre><span class="r">CREATE USER</span> _bloodhound <span class="r">WITH PASSWORD</span> '<span class="w">bhapi.json_se_password</span>';
+<span class="r">CREATE DATABASE</span> bloodhound <span class="r">OWNER</span> _bloodhound;
+\q</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ STARTING EVERYTHING ══════════════════════════════ -->
+  <section id="start">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Starting Everything — Correct Order</h2></div>
+    <p class="sec-desc">Order matter karta hai — BloodHound dono databases ko already running expect karta hai startup par.</p>
+    <ol class="steps">
+      <li><b>Neo4j start karo pehle</b> — <code style="color:var(--accent)">sudo neo4j console</code> ya <code style="color:var(--accent)">sudo systemctl start neo4j</code>. Wait karo jab tak "Started." log na dikhe.</li>
+      <li><b>PostgreSQL verify/start karo</b> — <code style="color:var(--accent)">pg_lsclusters</code> se confirm karo <code style="color:var(--accent)">online</code> hai; nahi to <code style="color:var(--accent)">sudo pg_ctlcluster &lt;ver&gt; main start</code>.</li>
+      <li><b>Dono ports verify karo ek saath</b>:
+        <div class="code-block" style="margin-top:8px;">
+          <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+          <pre>sudo ss -tulpn | grep -E "5432|7687"</pre>
+        </div>
+      </li>
+      <li><b>BloodHound CE start karo</b>:
+        <div class="code-block" style="margin-top:8px;">
+          <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+          <pre>sudo bloodhound</pre>
+        </div>
+        "It will take time, please wait..." message normal hai — pehli baar DB schema migrate ho raha hota hai.
+      </li>
+      <li><b>Logs me success confirm karo</b> — error-free startup, aur <code style="color:var(--accent)">http://localhost:8080</code> (ya jo port config me ho) khulne laga.</li>
+    </ol>
+    <div class="note"><b>Quick one-liner:</b> <code style="color:var(--accent)">sudo neo4j console &amp; sudo pg_ctlcluster 18 main start &amp;&amp; sleep 5 &amp;&amp; sudo bloodhound</code></div>
+  </section>
+
+  <!-- ══════════════════════════════ FIRST LOGIN ══════════════════════════════ -->
+  <section id="login">
+    <div class="sec-head"><span class="sec-num">06</span><h2>First Login</h2></div>
+    <div class="sub-sec">
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Browser</span></div>
+        <pre>http://localhost:8080</pre>
+      </div>
+      <p class="how">Pehli baar BloodHound start hone par terminal output ya logs me ek <b>admin temporary password</b> print hota hai — usse dhundo:</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo bloodhound 2&gt;&amp;1 | grep -i "initial password"
+<span class="d"># ya agar already background me chal raha hai:</span>
+sudo journalctl -u bloodhound -n 100 | grep -i password</pre>
+      </div>
+      <div class="note">Login karte hi naya strong password set karna mandatory hota hai — default/temp password kabhi reuse mat karo.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ SHARPHOUND ══════════════════════════════ -->
+  <section id="sharphound">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Collecting Data — SharpHound</h2></div>
+    <p class="sec-desc">
+      BloodHound sirf visualization/analysis tool hai — actual AD data **SharpHound** collector se gather hota hai,
+      domain-joined machine ya domain user context se run karke.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Download</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Variant</th><th>Download</th></tr>
+          <tr><td class="flag">SharpHound.exe (C#, Windows)</td><td class="fdesc"><a href="https://github.com/SpecterOps/SharpHound/releases" style="color:var(--accent);" target="_blank" rel="noopener">github.com/SpecterOps/SharpHound/releases</a></td></tr>
+          <tr><td class="flag">AzureHound (cloud/Entra ID collector)</td><td class="fdesc"><a href="https://github.com/SpecterOps/AzureHound/releases" style="color:var(--accent);" target="_blank" rel="noopener">github.com/SpecterOps/AzureHound/releases</a></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Basic collection run (domain-joined Windows machine par)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Target/pivot Windows machine</span></div>
+        <pre>SharpHound.exe -c All</pre>
+      </div>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Flag</th><th>Matlab</th></tr>
+          <tr><td class="flag">-c All</td><td class="fdesc">Saare collection methods enable karo (Sessions, LocalAdmin, ACL, Trusts, GPO, ObjectProps, etc.) — sabse comprehensive run.</td></tr>
+          <tr><td class="flag">-c Session,LocalAdmin</td><td class="fdesc">Specific methods sirf — stealthier/faster run jab pura collection nahi chahiye.</td></tr>
+          <tr><td class="flag">--zipfilename output.zip</td><td class="fdesc">Output ka naam specify karo.</td></tr>
+          <tr><td class="flag">-d domain.local</td><td class="fdesc">Specific domain target karo (multi-domain forest me useful).</td></tr>
+          <tr><td class="flag">--stealth</td><td class="fdesc">Noisier collection methods (jaise session enumeration via NetSessionEnum) skip karo — kam detection footprint.</td></tr>
+        </table>
+      </div>
+      <p class="how">Output ek timestamped <code style="color:var(--accent)">.zip</code> file hoti hai (JSON files ka collection) — isi ko BloodHound UI me upload karna hai.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ INGEST ══════════════════════════════ -->
+  <section id="ingest">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Ingesting Collected Data</h2></div>
+    <ol class="steps">
+      <li>BloodHound UI me login karo (<code style="color:var(--accent)">localhost:8080</code>)</li>
+      <li>Left sidebar me <b>"File Ingest"</b> / Upload section par jao</li>
+      <li>SharpHound se mila <code style="color:var(--accent)">.zip</code> file select karke upload karo</li>
+      <li>Processing complete hone ka wait karo — progress indicator dikhega</li>
+      <li>Analysis tab me jaake pre-built queries use karo, jaise <i>"Find Shortest Paths to Domain Admins"</i></li>
+    </ol>
+    <div class="note">Multiple collection runs same domain ke liye merge ho jaate hain — purana data overwrite nahi hota, naya add hota hai.</div>
+  </section>
+
+  <!-- ══════════════════════════════ TROUBLESHOOTING ══════════════════════════════ -->
+  <section id="troubleshoot">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Troubleshooting — Har Common Error</h2></div>
+    <p class="sec-desc">In order se check karo — zyadatar BloodHound issues in hi 5 categories me aate hain.</p>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: "connection refused" dial tcp 127.0.0.1:5432</h3>
+      <p class="how">(Humne abhi yehi debug kiya) — PostgreSQL port par koi listener nahi hai.</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Fix</span></div>
+        <pre>pg_lsclusters                              <span class="d"># cluster ka status check karo</span>
+sudo pg_ctlcluster &lt;version&gt; main start    <span class="d"># down ho to start karo</span>
+sudo ss -tulpn | grep 5432                 <span class="d"># verify listener</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: "active (exited)" in systemctl status</h3>
+      <p class="how">Wrapper service khud exit ho gayi, actual cluster/process chalu nahi hai. Yeh sirf PostgreSQL ke saath nahi, kai Debian/Kali multi-instance services (jaise MySQL) ke saath bhi hota hai.</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Fix</span></div>
+        <pre>sudo systemctl restart postgresql@&lt;version&gt;-main
+sudo systemctl status postgresql@&lt;version&gt;-main
+<span class="d"># status "active (running)" dikhna chahiye, "(exited)" nahi</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: Neo4j "failed to obtain lock" / won't start</h3>
+      <p class="how">Pichla Neo4j process properly close nahi hua, ya ek aur instance already chal rahi hai.</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Fix</span></div>
+        <pre>sudo ss -tulpn | grep 7687        <span class="d"># already running to hai?</span>
+ps aux | grep neo4j               <span class="d"># stuck process dhundo</span>
+sudo kill -9 &lt;PID&gt;
+sudo rm /var/lib/neo4j/run/neo4j.pid   <span class="d"># agar stale lock file ho</span>
+sudo neo4j console</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: BloodHound "unable to connect to neo4j" / auth failure</h3>
+      <p class="how">Config file ka Neo4j password actual Neo4j password se match nahi kar raha.</p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Fix</span></div>
+        <pre>cat /etc/bhapi/bhapi.json    <span class="d"># config me diya password check karo</span>
+<span class="d"># Browser se http://localhost:7474 pe login karke confirm karo wahi password kaam karta hai</span>
+<span class="d"># Agar bhool gaye ho, Neo4j password reset karo:</span>
+sudo neo4j-admin dbms set-initial-password &lt;naya_password&gt;
+<span class="d"># phir bhapi.json me bhi wahi password update karo</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: BloodHound UI khulta hi nahi (localhost:8080 refused)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Fix</span></div>
+        <pre>sudo ss -tulpn | grep 8080             <span class="d"># kuch listen kar raha hai?</span>
+sudo journalctl -u bloodhound -n 50    <span class="d"># agar systemd service hai to logs dekho</span>
+<span class="d"># ya agar foreground me chalaya tha, terminal output hi dekho error ke liye</span></pre>
+      </div>
+      <div class="note">Agar BloodHound crash ho raha hai startup ke turant baad, 90% cases me yeh Neo4j ya PostgreSQL dono me se ek down hona hota hai — Step 05 "Starting Everything" dobara follow karo.</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: SharpHound.exe AV/Defender se block ho jaata hai</h3>
+      <p class="how">SharpHound ek well-known, signature-matched tool hai — yeh expected behavior hai, defensive tooling ka. Authorized engagement me client se exclusion allow karwao, ya authorized lab me Defender temporarily disable karo. In-conversation AV-evasion/obfuscation techniques yahan cover nahi ki gayi hain.</p>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Error: ".zip upload fails / processing stuck" in UI</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Cause</th><th>Fix</th></tr>
+          <tr><td class="flag">Corrupt/partial zip</td><td class="fdesc">SharpHound run poora complete hone se pehle zip copy kiya gaya tha — re-run aur poora wait karo.</td></tr>
+          <tr><td class="flag">Neo4j full/out of memory during ingest</td><td class="fdesc"><code style="color:var(--accent)">/etc/neo4j/neo4j.conf</code> me heap size badhao: <code style="color:var(--accent)">dbms.memory.heap.max_size=2G</code> (ya zyada), phir Neo4j restart karo.</td></tr>
+          <tr><td class="flag">Old BloodHound Legacy format file (not CE compatible)</td><td class="fdesc">Purani BloodHound (legacy) SharpHound output BloodHound CE me directly upload nahi hoti — latest SharpHound release use karo jo CE schema match karta ho.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>General diagnostic — jab bhi kuch samajh na aaye</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — ek saath sab check karo</span></div>
+        <pre>pg_lsclusters                              <span class="d"># PostgreSQL status</span>
+sudo ss -tulpn | grep -E "5432|7687|7474|8080"   <span class="d"># sab 4 ports ek saath</span>
+sudo systemctl status neo4j postgresql     <span class="d"># dono services ka summary</span>
+sudo journalctl -xe --no-pager | tail -50  <span class="d"># recent system errors</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ CHEATSHEET ══════════════════════════════ -->
+  <section id="cheatsheet">
+    <div class="sec-head"><span class="sec-num">10</span><h2>Daily Start/Stop Cheatsheet</h2></div>
+    <div class="overflow-x">
+      <table class="qref">
+        <tr><th>Action</th><th>Command</th></tr>
+        <tr><td class="tool">Start everything (manual order)</td><td class="adv"><code style="color:var(--accent)">sudo neo4j console &amp;</code> → wait → <code style="color:var(--accent)">sudo pg_ctlcluster 18 main start</code> → <code style="color:var(--accent)">sudo bloodhound</code></td></tr>
+        <tr><td class="tool">Start everything (Docker route)</td><td class="adv"><code style="color:var(--accent)">docker compose up -d</code></td></tr>
+        <tr><td class="tool">Stop everything (manual)</td><td class="adv">Ctrl+C BloodHound → <code style="color:var(--accent)">sudo pg_ctlcluster 18 main stop</code> → <code style="color:var(--accent)">sudo systemctl stop neo4j</code></td></tr>
+        <tr><td class="tool">Stop everything (Docker)</td><td class="adv"><code style="color:var(--accent)">docker compose down</code></td></tr>
+        <tr><td class="tool">Check all ports at once</td><td class="adv"><code style="color:var(--accent)">sudo ss -tulpn | grep -E "5432|7687|7474|8080"</code></td></tr>
+        <tr><td class="tool">Reset Neo4j password</td><td class="adv"><code style="color:var(--accent)">sudo neo4j-admin dbms set-initial-password &lt;new&gt;</code></td></tr>
+        <tr><td class="tool">Full status check</td><td class="adv"><code style="color:var(--accent)">pg_lsclusters &amp;&amp; sudo systemctl status neo4j</code></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ SOURCES ══════════════════════════════ -->
+  <section id="sources">
+    <div class="sec-head"><span class="sec-num">11</span><h2>Official Sources &amp; Further Reading</h2></div>
+    <div class="overflow-x">
+      <table class="qref">
+        <tr><th>Topic</th><th>Source</th></tr>
+        <tr><td class="tool">BloodHound CE repo</td><td class="adv"><a href="https://github.com/SpecterOps/BloodHound" target="_blank" rel="noopener">github.com/SpecterOps/BloodHound</a></td></tr>
+        <tr><td class="tool">BloodHound official docs</td><td class="adv"><a href="https://bloodhound.specterops.io" target="_blank" rel="noopener">bloodhound.specterops.io</a> — install guides, query reference, edge documentation</td></tr>
+        <tr><td class="tool">SharpHound releases</td><td class="adv"><a href="https://github.com/SpecterOps/SharpHound/releases" target="_blank" rel="noopener">github.com/SpecterOps/SharpHound/releases</a></td></tr>
+        <tr><td class="tool">Neo4j docs</td><td class="adv"><a href="https://neo4j.com/docs/" target="_blank" rel="noopener">neo4j.com/docs</a></td></tr>
+        <tr><td class="tool">PostgreSQL cluster management (Debian/Ubuntu)</td><td class="adv"><a href="https://manpages.debian.org/testing/postgresql-common/pg_ctlcluster.1.en.html" target="_blank" rel="noopener">pg_ctlcluster man page</a></td></tr>
+        <tr><td class="tool">BloodHound CE Docker Compose</td><td class="adv"><code style="color:var(--accent)">https://ghst.ly/getbhce</code> — official one-liner install</td></tr>
+        <tr><td class="tool">HTB Academy — BloodHound module</td><td class="adv">Guided lab covering collection + analysis workflow</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Yeh guide ek authorized lab/engagement context ke liye hai. Sab commands standard admin/diagnostic operations hain — koi exploit code ya AV-bypass technique include nahi ki gayi hai.
+  </footer>
+
+</div>
+</body>
+</html>

