@@ -290,6 +290,8 @@ nmap -sV --script=nfs-ls,nfs-showmount,nfs-statfs $IP   <span class="c"># peek w
 <span class="c"># mount a share</span>
 mkdir -p /tmp/nfs
 sudo mount -t nfs $IP:/share_name /tmp/nfs -o nolock
+#OR YOU CAN USE ALSO ACCORDING TO THE TARGET NFS VERSION
+mount -t nfs -o rw,vers=3 $TargetIP:/tmp /tmp/nfs
 sudo mount -t nfs $IP:/ /tmp/nfs -o nolock          <span class="c"># if root exported</span>
 ls -la /tmp/nfs/
 
