@@ -77,6 +77,7 @@ Personal reference collection built from CTF rooms, labs, and authorized engagem
 
 ## 10 — Linux Privilege Escalation
 - [Linux PrivEsc Cheatsheet](https://shubhamkumar212004-hash.github.io/ActiveDirectory/10-Linux-Privilegeescaltion/Linux%20PrivEsc%20Cheatsheet.html)
+- [Linux_Full_Cheatsheet](https://shubhamkumar212004-hash.github.io/ActiveDirectory/10-Linux-Privilegeescaltion/OSCP%20Linux%20CTF%20Cheatsheet.html)
 
 ## 11 — Windows Privilege Escalation
 - [Windows PrivEsc Cheatsheet](https://shubhamkumar212004-hash.github.io/ActiveDirectory/11-WindowsPrivilege-escalation/Windows%20PrivEsc%20Cheatsheet.html)
