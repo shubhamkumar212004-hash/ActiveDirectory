@@ -74,6 +74,7 @@ Personal reference collection built from CTF rooms, labs, and authorized engagem
 
 ## 9 — DMSA
 - [dMSA_Attacks_ShadowCredentials_Cheatsheet](https://shubhamkumar212004-hash.github.io/ActiveDirectory/9-DMSA/dMSA_Attacks_ShadowCredentials_Cheatsheet.html)
+- [Badsuccesor](https://shubhamkumar212004-hash.github.io/ActiveDirectory/9-DMSA/BadSuccessor%20Attack%20%E2%80%94%20Full%20Walkthrough.html)
 
 ## 10 — Linux Privilege Escalation
 - [Linux PrivEsc Cheatsheet](https://shubhamkumar212004-hash.github.io/ActiveDirectory/10-Linux-Privilegeescaltion/Linux%20PrivEsc%20Cheatsheet.html)
