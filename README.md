@@ -82,6 +82,7 @@ Personal reference collection built from CTF rooms, labs, and authorized engagem
 
 ## 11 — Windows Privilege Escalation
 - [Windows PrivEsc Cheatsheet](https://shubhamkumar212004-hash.github.io/ActiveDirectory/11-WindowsPrivilege-escalation/Windows%20PrivEsc%20Cheatsheet.html)
+- [windows detailed privesc](https://shubhamkumar212004-hash.github.io/ActiveDirectory/11-WindowsPrivilege-escalation/Windows-PrivEsc.html)
 
 ## Usage
 Open any `.html` file directly in a browser — each is self-contained with no external dependencies.
