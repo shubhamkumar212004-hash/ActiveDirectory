@@ -158,7 +158,9 @@ icacls C:\path\file.txt</pre></div>
 
   <div class="entry"><div class="entry-head"><h3>9. where.exe se puri drive me filename pattern dhoondo</h3><span class="entry-num">#09</span></div>
     <pre>where /r C:\ flag*.txt
-where /r C:\ *.kdbx</pre></div>
+where /r C:\ *.kdbx
+#evil-winrm
+Get-ChildItem -Path C:\ -Include root.txt -File -Recurse -ErrorAction SilentlyContinue</pre></div>
 
   <div class="entry"><div class="entry-head"><h3>10. Everything / es.exe (voidtools) se fast indexed search</h3><span class="entry-num">#10</span></div>
     <pre>es.exe flag
